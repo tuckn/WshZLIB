@@ -1,23 +1,18 @@
-﻿/**
- * @updated 2019/12/14
- * @description WSH(Windows Script Host) functions for Windows archiver apps(7-Zip and RAR).
- * @fileencodeing UTF-8[BOM, dos]
- * @requirements wscript.exe/cscript.exe
- *   https://github.com/tuckn/WshCore.git
- *   https://sevenzip.osdn.jp/download.html
- *   https://www.rarlab.com/download.htm
- * @license MIT
- * @links https://github.com/tuckn/WshZLIB
- * @author Tuckn
- * @email tuckn333@gmail.com
- */
+﻿/* globals Wsh: false */
 
-// Global Objects
-if (!Wsh) var Wsh = {};
-
-Wsh.ZLIB = {};
 (function () {
-  // @requires
+  if (Wsh && Wsh.ZLIB) return;
+
+  /**
+   * This module provides helper WSH (Windows Script Host) functions that handle archiver apps (7-Zip and RAR).
+   *
+   * @namespace ZLIB
+   * @memberof Wsh
+   * @requires {@link https://github.com/tuckn/WshChildProcess|tuckn/WshChildProcess}
+   */
+  Wsh.ZLIB = {};
+
+  // Shorthands
   var util = Wsh.Util;
   var CD = Wsh.Constants;
   var os = Wsh.OS;
@@ -27,33 +22,52 @@ Wsh.ZLIB = {};
   var fse = Wsh.FileSystemExtra;
   var logger = Wsh.Logger;
   var userset = Wsh.UserSettings;
-  // Shorthand
+
   var obtain = util.obtainPropVal;
   var isArray = util.types.isArray;
-  var isEmp = util.types.isProbablyEmpty;
+  var isEmpty = util.isEmpty;
   var isFalsy = util.types.isFalsy;
+  var isSolidString = util.isSolidString;
   var isTruthy = util.types.isTruthy;
   var isSameStr = util.types.isSameMeaning;
-  var parseDate = util.createDateStrAsIso8601;
+  var parseDate = util.createDateString;
   var execFile = child_process.execFile;
   var execFileSync = child_process.execFileSync;
 
   var zlib = Wsh.ZLIB;
-  var ERR_TITLE = 'Error in WshZLIB.js';
 
+  /** @constant {string} */
+  var MODULE_TITLE = 'WshNet/ZLIB.js';
+
+  /** @constant {string} */
   var DEF_DIR_7ZIP = 'C:\\Program Files\\7-Zip';
-  var EXENAME_7ZFM = '7zFM.exe';
+
+  /** @constant {string} */
   var EXENAME_7Z = '7z.exe';
 
+  /** @constant {string} */
+  var EXENAME_7ZFM = '7zFM.exe';
+
+  /** @constant {string} */
   var DEF_DIR_WINRAR = 'C:\\Program Files\\WinRAR';
+
+  /** @constant {string} */
   var EXENAME_WINRAR = 'WinRar.exe';
+
+  /** @constant {string} */
   var EXENAME_RAR = 'Rar.exe';
 
   zlib.settingsName = 'zlib';
   zlib.propName7zip = '7zip';
   zlib.propNameWinrar = 'Winrar';
 
-  // @require // binaries
+  var throwErrInvalidValue = function (functionName, argName, typeErrVal) {
+    util.throwValueError(argName, MODULE_TITLE, functionName, typeErrVal);
+  };
+
+  var throwErrNonStr = function (functionName, typeErrVal) {
+    util.throwTypeError('string', MODULE_TITLE, functionName, typeErrVal);
+  };
 
   /**
    * @function getExePath {{{
@@ -67,7 +81,7 @@ Wsh.ZLIB = {};
    */
   var getExePath = function (users, propName, options) {
     var specifiedExe = obtain(options, 'specifiedExe', null);
-    if (!isEmp(specifiedExe)) return specifiedExe;
+    if (!isEmpty(specifiedExe)) return specifiedExe;
 
     var defPath = obtain(options, 'defPath', null);
     var userobj = userset.load({ users: users });
@@ -76,13 +90,13 @@ Wsh.ZLIB = {};
     });
 
     var exeName = obtain(options, 'exeName', null);
-    if (!isEmp(exeName)) return path.join(fullPath, exeName);
+    if (!isEmpty(exeName)) return path.join(fullPath, exeName);
     return fullPath;
   }; // }}}
 
   /**
-   * @description 7-Zip
-7-Zip [32] 16.04 : Copyright (c) 1999-2016 Igor Pavlov : 2016-10-04 {{{
+   * @description 7-Zip {{{
+7-Zip [32] 16.04 : Copyright (c) 1999-2016 Igor Pavlov : 2016-10-04
 
 Usage: 7z <command> [<switches>...] <archive_name> [<file_names>...]
        [<@listfiles...>]
@@ -148,52 +162,47 @@ Usage: 7z <command> [<switches>...] <archive_name> [<file_names>...]
   -y : assume Yes on all queries }}}
   */
 
+  // zlib.deflateSync {{{
   /**
-   * @function deflateSync {{{
-   * @description compress and encrypt into ZIP
-   * @param {Array} paths 圧縮対象。複数ある場合は配列にして渡す
-   * @param {String} dest A dest Zip file path or a dest directory.
-   * @param {Associative Array} options
-   *   {Boolean} [.appendsDatecode=true] true:add "yyyy-mm-dd" to Zipfile name
-   *   {Number/String} [.compressLv=5] Level of compression. 1,3,5,7,9 or
-   *     Fastest, Fast, Normal, Maximum, Ultra
-   *   {Array} [.excludePaths=[]]
-   *   {String} [.password] -p (set password)
-   *   {String} [.workingDir] Working directory
-   *   {Object} [.loggerOptions] See tuckn/WshCore/Logger.js:create
-   *   {Boolean} [noneSaveLog=false]
-   *   {String} [.exe7z] A custom path of 7z.exe
-   *   {userset.Class/String} [users] See WshCore/UserSettings.js:load
-   * @return {object} assoc
+   * Compresses and encrypts files into ZIP with 7-Zip.
+   *
+   * @function deflateSync
+   * @memberof Wsh.ZLIB
+   * @param {string|Array} paths - The filepaths that compressed.
+   * @param {string} dest - The filepath or directory of destination ZIP.
+   * @param {object} [options] - Optional parameters.
+   * @param {string} [options.dir7zip=DEF_DIR_7ZIP] - A custom directory path of 7-ZIP.
+   * @param {string} [options.dateCode] - If specify "yyyy-MM-dd" to Zipfile name is <name>_yyyy-MM-dd.zip
+   * @param {number|string} [options.compressLv=5] Level of compression. 1,3,5,7,9 or Fastest, Fast, Normal, Maximum, Ultra
+   * @param {Array|string} [options.excludePaths]
+   * @param {string} [options.password] - -p (set password)
+   * @param {string} [options.workingDir] - Working directory
+   * @param {boolean} [options.outputsLog=true] - Output console logs.
+   * @param {boolean} [options.isDryRun=false] - No execute, returns the string of command.
+   * @returns {object|string} - See {@link https://docs.tuckn.net/WshChildProcess/global.html#typeRunSyncReturn|typeRunSyncReturn}. If options.isDryRun is true, returns string.
    */
   zlib.deflateSync = function (paths, dest, options) {
-    var fcName = 'zlib.deflateSync';
-    var loggerOptions = obtain(options, 'loggerOptions', {});
-    var lggr = logger.create(loggerOptions);
-    lggr.info('Start the function ' + fcName);
+    var FN = 'zlib.deflateSync';
 
-    if (isEmp(paths)) {
-      throw new Error(ERR_TITLE + ' ' + fcName + '\n  paths is empty');
-    }
+    if (isEmpty(paths)) throwErrInvalidValue(FN, 'paths', paths);
 
-    // Getting the .exe path
-    var users = obtain(options, 'users', null);
-    var exe7z = getExePath(users, zlib.propName7zip, {
-      exeName: EXENAME_7Z,
-      specifiedExe: obtain(options, 'exe7z', null),
-      defPath: DEF_DIR_7ZIP
-    });
+    var outputsLog = obtain(options, 'outputsLog', true);
+
+    // Setting the .exe path
+    var dir7zip = obtain(options, 'dir7z', DEF_DIR_7ZIP);
+    var exe7z = path.join(dir7zip, EXENAME_7Z);
 
     // Set arguments
     // lggr.info('a: Add files to archive');
-    lggr.info('u : Update files to archive');
-    lggr.info('-tzip: Set ZIP type of archive');
-    lggr.info('-ssw: Compress shared(locked) files');
+    if (outputsLog) console.log('u : Update files to archive');
+    if (outputsLog) console.log('-tzip: Set ZIP type of archive');
+    if (outputsLog) console.log('-ssw: Compress shared(locked) files');
     var args = ['u', '-tzip', '-ssw'];
 
-    // Set compression level (-mx1(fastest) ... -mx9(ultra)') {{{
-    if (!isEmp(options.compressLv)) {
-      var lv = options.compressLv.toString().toUpperCase().trim();
+    // Set compression level (-mx1(fastest) ... -mx9(ultra)')
+    var compressLv = obtain(options, 'compressLv', null);
+    if (!isEmpty(compressLv)) {
+      var lv = compressLv.toString().toUpperCase().trim();
       var mxN;
 
       if (lv === 'FASTEST' || lv === '1') {
@@ -208,29 +217,29 @@ Usage: 7z <command> [<switches>...] <archive_name> [<file_names>...]
         mxN = '-mx' + lv;
       }
 
-      lggr.info(mxN + ': Set compression level (-mx1(fastest) ... -mx9(ultra)');
+      if (outputsLog) console.log(mxN + ': Set compression level (-mx1(fastest) ... -mx9(ultra)');
       args.push(mxN);
-    } // }}}
+    }
 
-    // Set a zip password (-p{Password}) {{{
+    // Set a zip password (-p{Password})
     //   -mhe=on Encode a archive header(7z only!)
     // @note .zipの場合、暗号化しても格納ファイルの構造は見れちゃう
     var password = obtain(options, 'password', null);
-    if (!isEmp(password)) {
-      lggr.info('-p"****": Set the password (-mem=AES256)');
+    if (!isEmpty(password)) {
+      if (outputsLog) console.log('-p"****": Set the password (-mem=AES256)');
       args.push('-p"' + password.toCmdArg() + '"', '-mem=AES256');
-    } // }}}
+    }
 
-    // Assign a working directory (-w[{path}]) {{{
+    // Assign a working directory (-w[{path}])
     var workingDir = obtain(options, 'workingDir', null);
-    if (!isEmp(workingDir)) {
-      lggr.info('-w"' + workingDir + '": Assign the working directory');
+    if (!isEmpty(workingDir)) {
+      if (outputsLog) console.log('-w"' + workingDir + '": Assign the working directory');
       args.push('-w"' + workingDir + '"');
-    } // }}}
+    }
 
-    // Set exclude of filepaths (-xr!"path") {{{
+    // Set exclude of filepaths (-xr!"path")
     var excludePaths = obtain(options, 'excludePaths', null);
-    if (!isEmp(excludePaths)) {
+    if (!isEmpty(excludePaths)) {
       var excludePathsStr = '';
 
       if (isArray(excludePaths)) {
@@ -243,30 +252,39 @@ Usage: 7z <command> [<switches>...] <archive_name> [<file_names>...]
         args.push('-xr!"' + excludePaths + '"');
       }
 
-      lggr.info('-xr!: Set exclude of filepaths ' + excludePathsStr);
-    } // }}}
+      if (outputsLog) console.log('-xr!: Set exclude of filepaths ' + excludePathsStr);
+    }
 
     var srcPaths = [];
-    paths.forEach(function (val) {
-      if (isEmp(val)) return;
-      srcPaths.push(path.resolve(val));
-    });
+    if (isArray(paths)) {
+      paths.forEach(function (val) {
+        if (isEmpty(val)) return;
+        srcPaths.push(path.resolve(val));
+      });
+    } else if (isSolidString(paths)) {
+      srcPaths.push(paths);
+    } else {
+      throwErrInvalidValue(FN, 'paths', paths);
+    }
 
-    // Set a creating ZIP file path {{{
+    // Set a creating ZIP file path
     var destZip = dest;
 
-    if (isEmp(destZip)) {
+    if (isEmpty(destZip)) {
       destZip = srcPaths[0].replace(/\*/g, '').replace(/\\?$/, '.zip');
-    // When dest was specifed a existing directory,
     } else if (fs.existsSync(destZip) && fs.statSync(destZip).isDirectory()) {
+      // When specified the dest and it's a existing directory,
       destZip = destZip.replace(/\\?$/, path.sep + path.basename(srcPaths[0]) + '.zip');
+    } else {
+      // Create new or overwrite?
     }
 
     var destZipDir = path.dirname(destZip);
     if (!fs.existsSync(destZipDir)) fse.ensureDirSync(destZipDir);
 
-    if (isTruthy(options.appendsDatecode)) {
-      destZip = destZip.replace(/\.zip$/i, '_' + parseDate() + '.zip');
+    var dateCode = obtain(options, 'dateCode', null);
+    if (isSolidString(dateCode)) {
+      destZip = destZip.replace(/\.zip$/i, '_' + parseDate(dateCode) + '.zip');
     }
 
     // // @TODO 同名のファイルがある場合
@@ -279,66 +297,92 @@ Usage: 7z <command> [<switches>...] <archive_name> [<file_names>...]
     // }
 
     args.push('"' + destZip + '"');
-    // }}}
 
-    // Set file paths to be compressed
-    args.push(srcPaths.reduce(function (acc, val) {
-      return acc + '"' + val + '" ';
-    }, ''));
+    // Adding the filepaths to the 7-ZIP argument.
+    args.push(
+      srcPaths.reduce(function (acc, val) {
+        return acc + '"' + val + '" ';
+      }, '')
+    );
 
     // TODO:
     // Set exclude of filelists (-xr@"path")
 
     // Executing
-    lggr.info('7zip path: "' + exe7z + '"');
-    lggr.info('arguments: ' + args.join(' '));
-    var assoc = execFileSync(exe7z, args, { show: CD.winHidden });
+    if (outputsLog) console.log('7zip path: "' + exe7z + '"');
+    if (outputsLog) console.log('arguments: ' + args.join(' '));
 
-    lggr.info(util.assocToStr(assoc));
+    var isDryRun = obtain(options, 'isDryRun', false);
+    var rtn = execFileSync(exe7z, args, {
+      winStyle: CD.windowStyles.hidden,
+      isDryRun: isDryRun
+    });
 
-    // Exit values  {{{
-    if (assoc.error) {
-      lggr.error(ERR_TITLE + ' ' + fcName + '\n'
-          + '  Failed to deflate the files\n'
-          + ' ' + assoc.stderr);
+    if (isDryRun) return rtn; // {string}
+
+    if (outputsLog) console.log(util.assocToStr(rtn));
+
+    // Exit values
+    if (rtn.error) {
+      throw new Error('Failed to deflate the files\n'
+        + ' ' + rtn.stderr
+        + '  at ' + FN + ' (' + MODULE_TITLE + ')');
+    }
 
     // 0: No error
-    } else if (assoc.exitCode === 0) {
-      lggr.success('No error');
-      assoc.error = false;
+    if (rtn.exitCode === 0) {
+      if (outputsLog) console.log('No error');
+      rtn.error = false;
+      return rtn;
+    }
 
     // 1: Warning (Non fatal error(s)).
     //   For example, one or more files were locked by some other application,
     //   so they were not compressed.
-    } else if (assoc.exitCode === 1) {
-      lggr.warn('Warning. Non fatal error(s).');
-      assoc.error = false;
+    if (rtn.exitCode === 1) {
+      if (outputsLog) console.log('Warning. Non fatal error(s).');
+      rtn.error = false;
+      return rtn;
+    }
 
     // 2: Fatal Error
-    } else if (assoc.exitCode === 2) {
-      lggr.error('Fatal Error');
-      assoc.error = true;
+    if (rtn.exitCode === 2) {
+      throw new Error(
+        '[ERROR] 7-Zip: Fatal Error\n'
+        + ' ' + rtn.stderr
+        + '  at ' + FN + ' (' + MODULE_TITLE + ')'
+      );
+    }
 
     // 7: Command line error
-    } else if (assoc.exitCode === 7) {
-      lggr.error('Command line error');
-      assoc.error = true;
+    if (rtn.exitCode === 7) {
+      throw new Error(
+        '[ERROR] 7-Zip: Command line error\n'
+        + ' ' + rtn.stderr
+        + '  at ' + FN + ' (' + MODULE_TITLE + ')'
+      );
+    }
 
     // 8: Not enough memory for operation
-    } else if (assoc.exitCode === 8) {
-      lggr.error('Not enough memory for operation');
-      assoc.error = true;
+    if (rtn.exitCode === 8) {
+      throw new Error(
+        '[ERROR] 7-Zip: Not enough memory for operation\n'
+        + ' ' + rtn.stderr
+        + '  at ' + FN + ' (' + MODULE_TITLE + ')'
+      );
+    }
 
     // 255: User stopped the process
-    } else if (assoc.exitCode === 255) {
-      lggr.error('User stopped the process');
-      assoc.error = true;
-
-    } else {
-      lggr.error('UNKNOWN EXIT CODE');
-      assoc.error = true;
+    if (rtn.exitCode === 255) {
+      throw new Error(
+        '[ERROR] 7-Zip: User stopped the process\n'
+        + ' ' + rtn.stderr
+        + '  at ' + FN + ' (' + MODULE_TITLE + ')'
+      );
     }
-    // }}}
+
+    if (outputsLog) console.log('UNKNOWN EXIT CODE');
+    rtn.error = true;
 
     // // @TODO 退避させた同名ファイルの処理
     // if (fs.statSync(newZipPath + '.tmp').isFile()) {
@@ -349,90 +393,77 @@ Usage: 7z <command> [<switches>...] <archive_name> [<file_names>...]
     //   }
     // }
 
-    lggr.info('Finished the function ' + fcName);
-    var noneSaveLog = obtain(options, 'noneSaveLog', false);
-    if (!noneSaveLog) lggr.transport();
+    return rtn;
+  }; // }}}
 
-    return assoc;
-  };  // }}}
-
+  // zlib.openZip {{{
   /**
-   * @function openZip {{{
-   * @description open a ZIP file.
-   * @param {String} archive A archive filepath
-   * @param {Associative Array} [options]
-   *   {String} [.exe7zfm] A custom path of 7zFM.exe
-   *   {userset.Class/String} [users] See WshCore/UserSettings.js:load
-   * @return
+   * Open the archive file with 7-Zip.
+   *
+   * @function openZip
+   * @memberof Wsh.ZLIB
+   * @param {string} archive - A archive filepath
+   * @param {object} [options] - Optional parameters.
+   * @param {string} [options.dir7zip=DEF_DIR_7ZIP] - A custom directory path of 7-ZIP.
+   * @returns {void}
    */
   zlib.openZip = function (archive, options) {
-    if (isEmp(archive)) {
-      throw new Error(ERR_TITLE + '(openZip)\n'
-          + '  A archive path is empty: ' + archive);
-    }
+    var FN = 'zlib.openZip';
+
+    if (!isSolidString(archive)) throwErrNonStr(FN, archive);
+
     var filePath = path.resolve(archive);
 
-    // Getting the .exe path
-    var users = obtain(options, 'users', null);
-    var exe7zfm = getExePath(users, zlib.propName7zip, {
-      exeName: EXENAME_7ZFM,
-      specifiedExe: obtain(options, 'exe7zfm', null),
-      defPath: DEF_DIR_7ZIP
-    });
+    // Setting the .exe path
+    var dir7zip = obtain(options, 'dir7z', DEF_DIR_7ZIP);
+    var exe7zFM = path.join(dir7zip, EXENAME_7ZFM);
 
     // Executing
-    execFile(exe7zfm, [filePath.toFilePath()], { show: CD.winActiveDef });
-  };  // }}}
+    execFile(exe7zFM, [filePath], { winStyle: CD.windowStyles.activeDef });
+  }; // }}}
 
+  // zlib.unzipSync {{{
   /**
-   * @function unzipSync {{{
    * @description Extract files from archiver with 7-Zip.
-   * @param {String} archive A archive file path
-   * @param {String} [destDir] A output directory path.
-   * @param {Associative Array} [options]
-   *   {String} [.password]
-   *   {Boolean} [.makesDir=true] Make a new directory with archive file name
-   *   {Object} [.loggerOptions] See tuckn/WshCore/Logger.js:create
-   *   {Boolean} [noneSaveLog=false]
-   *   {String} [.exe7z] A custom path of 7z.exe
-   *   {userset.Class/String} [users] See WshCore/UserSettings.js:load
-   * @return {Associative Array}
+   *
+   * @function unzipSync
+   * @memberof Wsh.ZLIB
+   * @param {string} archive - The archive file path
+   * @param {string} [destDir] - The output directory path.
+   * @param {object} [options] - Optional parameters.
+   * @param {string} [options.dir7zip=DEF_DIR_7ZIP] - A custom directory path of 7-ZIP.
+   * @param {string} [options.password] - -p (set password)
+   * @param {boolean} [options.makesDir=true] - Makes a new directory with archive file name
+   * @param {boolean} [options.outputsLog=true] - Output console logs.
+   * @returns {object} - See {@link https://docs.tuckn.net/WshChildProcess/global.html#typeRunSyncReturn|typeRunSyncReturn}.
    */
   zlib.unzipSync = function (archive, destDir, options) {
-    var fcName = 'zlib.unzipSync';
-    var loggerOptions = obtain(options, 'loggerOptions', {});
-    var lggr = logger.create(loggerOptions);
-    lggr.info('Start the function ' + fcName);
+    var FN = 'zlib.unzipSync';
 
-    if (isEmp(archive)) {
-      throw new Error(ERR_TITLE + ' ' + fcName + '\n'
-          + '  A archive path is empty: ' + archive);
-    }
-    var srcPath = path.resolve(archive);
+    if (!isSolidString(archive)) throwErrNonStr(FN, archive);
 
-    // Getting the .exe path
-    var users = obtain(options, 'users', null);
-    var exe7z = getExePath(users, zlib.propName7zip, {
-      exeName: EXENAME_7Z,
-      specifiedExe: obtain(options, 'exe7z', null),
-      defPath: DEF_DIR_7ZIP
-    });
+    var outputsLog = obtain(options, 'outputsLog', true);
 
-    // Set arguments
-    lggr.info('x: eXtract files with full paths');
+    // Setting the .exe path
+    var dir7zip = obtain(options, 'dir7z', DEF_DIR_7ZIP);
+    var exe7z = path.join(dir7zip, EXENAME_7Z);
+
+    // Setting arguments
+    if (outputsLog) console.log('x: eXtract files with full paths');
     var args = ['x'];
 
-    // Unzip password {{{
+    // Setting the Unzip password
     var password = obtain(options, 'password', null);
-    if (!isEmp(password)) {
-      lggr.info('-p"****": Set the password');
+    if (!isEmpty(password)) {
+      if (outputsLog) console.log('-p"****": Set the password');
       args.push('-p"' + password.toCmdArg() + '"');
-    } // }}}
+    }
 
-    // Set the output directory path.
-    // 指定がない場合はsrcPathのフォルダに設定する
-    // false指定された時のみフォルダを作成せず直接解凍する
-    if (isEmp(destDir)) destDir = path.dirname(srcPath);
+    var srcPath = path.resolve(archive);
+
+    // Setting the output directory path.
+    // If it is not specified, set the srcPath directory.
+    if (isEmpty(destDir)) destDir = path.dirname(srcPath);
 
     destDir = path.resolve(destDir);
 
@@ -440,67 +471,81 @@ Usage: 7z <command> [<switches>...] <archive_name> [<file_names>...]
       destDir = path.join(destDir, path.parse(srcPath).name);
     }
 
-    // Create the directory
+    // Creating the directory
     if (!fs.existsSync(destDir)) fse.ensureDirSync(destDir);
 
     // Executing
     args.push(srcPath.toFilePath(), '-o' + destDir.toFilePath(), '-y');
 
-    lggr.info('7zip path: "' + exe7z + '"');
-    lggr.info('arguments: ' + args.join(' '));
-    var assoc = execFileSync(exe7z, args, { show: CD.winHidden });
+    if (outputsLog) console.log('7zip path: "' + exe7z + '"');
+    if (outputsLog) console.log('arguments: ' + args.join(' '));
 
-    lggr.info(util.assocToStr(assoc));
+    var rtn = execFileSync(exe7z, args, { winStyle: CD.windowStyles.hidden });
 
-    // Exit values  {{{
-    if (assoc.error) {
-      lggr.error(ERR_TITLE + ' ' + fcName + '\n'
-          + '  Failed to unrar "' + srcPath + '"\n'
-          + ' ' + assoc.stderr);
+    if (outputsLog) console.log(util.assocToStr(rtn));
+
+    // Exit values
+    if (rtn.error) {
+      throw new Error('Failed to unzip the files\n'
+        + ' ' + rtn.stderr
+        + '  at ' + FN + ' (' + MODULE_TITLE + ')');
+    }
 
     // 0: No error
-    } else if (assoc.exitCode === 0) {
-      lggr.success('No error.');
-      assoc.error = false;
+    if (rtn.exitCode === 0) {
+      if (outputsLog) console.log('No error');
+      rtn.error = false;
+      return rtn;
+    }
 
     // 1: Warning (Non fatal error(s)). For example, one or more files were
     //  locked by some other application, so they were not compressed.
-    } else if (assoc.exitCode === 1) {
-      lggr.warn('Warning (Non fatal error(s)).');
-      assoc.error = false;
+    if (rtn.exitCode === 1) {
+      if (outputsLog) console.log('Warning. Non fatal error(s).');
+      rtn.error = false;
+    }
 
     // 2: Fatal error.
-    } else if (assoc.exitCode === 2) {
-      lggr.error('Fatal error.');
-      assoc.error = true;
+    if (rtn.exitCode === 2) {
+      throw new Error(
+        '[ERROR] 7-Zip: Fatal Error\n'
+        + ' ' + rtn.stderr
+        + '  at ' + FN + ' (' + MODULE_TITLE + ')'
+      );
+    }
 
     // 3: Command line error.
-    } else if (assoc.exitCode === 3) {
-      lggr.error('Command line error.');
-      assoc.error = true;
+    if (rtn.exitCode === 3) {
+      throw new Error(
+        '[ERROR] 7-Zip: Command line error\n'
+        + ' ' + rtn.stderr
+        + '  at ' + FN + ' (' + MODULE_TITLE + ')'
+      );
+    }
 
     // 5: Not enough memory for operation.
-    } else if (assoc.exitCode === 5) {
-      lggr.error('Not enough memory for operation.');
-      assoc.error = true;
+    if (rtn.exitCode === 5) {
+      throw new Error(
+        '[ERROR] 7-Zip: Not enough memory for operation\n'
+        + ' ' + rtn.stderr
+        + '  at ' + FN + ' (' + MODULE_TITLE + ')'
+      );
+    }
 
     // 255: User stopped the process.
-    } else if (assoc.exitCode === 255) {
-      lggr.error('User stopped the process.');
-      assoc.error = true;
-
-    } else {
-      lggr.error('Unknown ExitCode.');
-      assoc.error = true;
+    if (rtn.exitCode === 255) {
+      throw new Error(
+        '[ERROR] 7-Zip: User stopped the process\n'
+        + ' ' + rtn.stderr
+        + '  at ' + FN + ' (' + MODULE_TITLE + ')'
+      );
     }
-    // }}}
 
-    lggr.info('Finished the function ' + fcName);
-    var noneSaveLog = obtain(options, 'noneSaveLog', false);
-    if (!noneSaveLog) lggr.transport();
+    if (outputsLog) console.log('UNKNOWN EXIT CODE');
+    rtn.error = true;
 
-    return assoc;
-  };  // }}}
+    return rtn;
+  }; // }}}
 
   /**
    * @description RAR
@@ -630,12 +675,17 @@ Usage:     rar <command> -<switch 1> -<switch N> <archive> <files...>
   z[file]       Read archive comment from file }}}
   */
 
+  // zlib.deflateSyncInRar {{{
   /**
-   * @function deflateSyncInRar {{{
-   * @description compress and encrypt into RAR
+   * Compresses and encrypts files into ZIP with RAR.
+   *
+   * @function deflateSyncInRar
+   * @memberof Wsh.ZLIB
    * @param {Array} paths 圧縮対象。複数ある場合は配列にして渡す
    *   複数ある場合、リストファイルを作成し、@<lf> オプションで指定する
    * @param {String} dest A dest RAR file path or a dest directory.
+   * @param {object} [options] - Optional parameters.
+   * @param {string} [options.dirWinRar=DEF_DIR_WINRAR] - A custom directory path of WinRAR.
    * @param {Associative Array} options
    *   {Boolean} [.appendsDatecode=true]
    *   {String} [.password] ファイルヘッダも含めて暗号化
@@ -662,30 +712,21 @@ Usage:     rar <command> -<switch 1> -<switch N> <archive> <files...>
    *   {Object} [.loggerOptions] See tuckn/WshCore/Logger.js:create
    *   {Boolean} [noneSaveLog=false]
    *   {Boolean} [.isGUI=true] true:WinRar.exe false:Rar.exe
-   *   {String} [.exeRar] A custom path of Rar/WinRar.exe
    *   {userset.Class/String} [users] See WshCore/UserSettings.js:load
-   * @return {object} assoc
+   * @returns {object} assoc
    */
   zlib.deflateSyncInRar = function (paths, dest, options) {
-    var fcName = 'zlib.deflateSyncInRar';
-    var loggerOptions = obtain(options, 'loggerOptions', {});
-    var lggr = logger.create(loggerOptions);
-    lggr.info('Start the function ' + fcName);
+    var FN = 'zlib.deflateSyncInRar';
 
-    // Getting the .exe path
-    var exeRar = obtain(options, 'exeRar', null);
-    if (isEmp(exeRar)) {
-      var users = obtain(options, 'users', null);
-      var dirRar = getExePath(users, zlib.propNameWinrar, {
-        defPath: DEF_DIR_WINRAR
-      });
+    // Setting the .exe path
+    var dirWinRar = obtain(options, 'dirWinRar', DEF_DIR_WINRAR);
 
-      // WinRar.exe or Rar.exe (default:WinRar.exe
-      if (obtain(options, 'isGUI', true)) {
-        exeRar = path.join(dirRar, EXENAME_WINRAR);
-      } else {
-        exeRar = path.join(dirRar, EXENAME_RAR);
-      }
+    // WinRar.exe or Rar.exe (default:WinRar.exe
+    var exeRar;
+    if (obtain(options, 'isGUI', true)) {
+      exeRar = path.join(dirWinRar, EXENAME_WINRAR);
+    } else {
+      exeRar = path.join(dirWinRar, EXENAME_RAR);
     }
 
     // Set arguments
@@ -837,20 +878,20 @@ Usage:     rar <command> -<switch 1> -<switch N> <archive> <files...>
     } // }}}
 
     // Assign work directory. {{{
-    if (!isEmp(options.workDir)) {
+    if (!isEmpty(options.workDir)) {
       lggr.info('-w: Assign work directory to "' + options.workDir + '"');
       args.push('-w"' + options.workDir + '"');
     } // }}}
 
     // Encrypt both file data and headers. {{{
-    if (!isEmp(options.password)) {
+    if (!isEmpty(options.password)) {
       lggr.info('-hp"****": Encrypt both file data and headers (encrypted RAR)');
       args.push('-hp"' + options.password.toCmdArg() + '"');
     } // }}}
 
     // Exclude {{{
     var tmpExcludeList;
-    if (!isEmp(options.excludePaths)) {
+    if (!isEmpty(options.excludePaths)) {
       if (isArray(options.excludePaths)) {
         tmpExcludeList = fs.writeTmpFileSync(options.excludePaths.join(os.EOL), { encoding: os.cmdCodeset() });
 
@@ -864,14 +905,14 @@ Usage:     rar <command> -<switch 1> -<switch N> <archive> <files...>
 
     var srcPaths = [];
     paths.forEach(function (val) {
-      if (isEmp(val)) return;
+      if (isEmpty(val)) return;
       srcPaths.push(path.resolve(val));
     });
 
     // Set a creating RAR file path {{{
     var destRar = dest;
 
-    if (isEmp(destRar)) {
+    if (isEmpty(destRar)) {
       destRar = srcPaths[0].replace(/\*/g, '').replace(/\\?$/, '.rar');
     // When dest was specifed a existing directory,
     } else if (fs.existsSync(destRar) && fs.statSync(destRar).isDirectory()) {
@@ -914,7 +955,7 @@ Usage:     rar <command> -<switch 1> -<switch N> <archive> <files...>
     // RAR exits with a zero exitCode (0) in case of successful operation. The exit
     // exitCode of non-zero means the operation was cancelled due to an error:
     if (assoc.error) {
-      lggr.error(ERR_TITLE + ' ' + fcName + '\n'
+      lggr.error(MODULE_TITLE + ' ' + FN + '\n'
           + '  Failed to deflate the files\n'
           + ' ' + assoc.stderr);
 
@@ -984,7 +1025,7 @@ Usage:     rar <command> -<switch 1> -<switch N> <archive> <files...>
     }
     // }}}
 
-    lggr.info('Finished the function ' + fcName);
+    lggr.info('Finished the function ' + FN);
     var noneSaveLog = obtain(options, 'noneSaveLog', false);
     if (!noneSaveLog) lggr.transport();
 
@@ -1005,7 +1046,7 @@ Usage:     rar <command> -<switch 1> -<switch N> <archive> <files...>
    *   {Boolean} [.isGUI=false] true:WinRar.exe false:Rar.exe
    *   {String} [.exeRar] A custom path of Rar/WinRar.exe
    *   {userset.Class/String} [users] See WshCore/UserSettings.js:load
-   * @return {Associative Array}
+   * @returns {Associative Array}
    */
   zlib.testRarSync = function (archive, options) {
     var fcName = 'zlib.testRarSync';
@@ -1013,14 +1054,14 @@ Usage:     rar <command> -<switch 1> -<switch N> <archive> <files...>
     var lggr = logger.create(loggerOptions);
     lggr.info('Start the function ' + fcName);
 
-    if (isEmp(archive)) {
-      throw new Error(ERR_TITLE + ' ' + fcName + '\n  archive is empty');
+    if (isEmpty(archive)) {
+      throw new Error(MODULE_TITLE + ' ' + fcName + '\n  archive is empty');
     }
     var filePath = path.resolve(archive);
 
     // Getting the .exe path
     var exeRar = obtain(options, 'exeRar', null);
-    if (isEmp(exeRar)) {
+    if (isEmpty(exeRar)) {
       var users = obtain(options, 'users', null);
       var dirRar = getExePath(users, zlib.propNameWinrar, {
         defPath: DEF_DIR_WINRAR
@@ -1048,7 +1089,7 @@ Usage:     rar <command> -<switch 1> -<switch N> <archive> <files...>
     // RAR exits with a zero exitCode (0) in case of successful operation.
     // Non-zero exit exitCode indicates some kind of error:
     if (assoc.error) {
-      lggr.error(ERR_TITLE + ' ' + fcName + '\n'
+      lggr.error(MODULE_TITLE + ' ' + fcName + '\n'
           + '  Failed to test "' + filePath + '"\n'
           + ' ' + assoc.stderr);
 
@@ -1138,8 +1179,8 @@ Usage:     rar <command> -<switch 1> -<switch N> <archive> <files...>
    * @return
    */
   zlib.openRar = function (archive, options) {
-    if (isEmp(archive)) {
-      throw new Error(ERR_TITLE + '(openRar)\n'
+    if (isEmpty(archive)) {
+      throw new Error(MODULE_TITLE + '(openRar)\n'
           + '  A archive path is empty: ' + archive);
     }
     var filePath = path.resolve(archive);
@@ -1168,7 +1209,7 @@ Usage:     rar <command> -<switch 1> -<switch N> <archive> <files...>
    *   {Boolean} [.isGUI=true] true:WinRar.exe false:Rar.exe
    *   {String} [.exeRar] A custom path of Rar/WinRar.exe
    *   {userset.Class/String} [users] See WshCore/UserSettings.js:load
-   * @return {Associative Array}
+   * @returns {Associative Array}
    */
   zlib.unrarSync = function (archive, destDir, options) {
     var fcName = 'zlib.unrarSync';
@@ -1178,7 +1219,7 @@ Usage:     rar <command> -<switch 1> -<switch N> <archive> <files...>
 
     // Getting the .exe path
     var exeRar = obtain(options, 'exeRar', null);
-    if (isEmp(exeRar)) {
+    if (isEmpty(exeRar)) {
       var users = obtain(options, 'users', null);
       var dirRar = getExePath(users, zlib.propNameWinrar, {
         defPath: DEF_DIR_WINRAR
@@ -1197,7 +1238,7 @@ Usage:     rar <command> -<switch 1> -<switch N> <archive> <files...>
     // Set a output directory path.
     // 指定がない場合はsrcPathのフォルダに設定する
     // false指定された時のみフォルダを作成せず直接解凍する
-    if (isEmp(destDir)) destDir = path.dirname(srcPath);
+    if (isEmpty(destDir)) destDir = path.dirname(srcPath);
 
     destDir = path.resolve(destDir);
 
@@ -1221,7 +1262,7 @@ Usage:     rar <command> -<switch 1> -<switch N> <archive> <files...>
     // RAR exits with a zero exitCode (0) in case of successful operation.
     // Non-zero exit exitCode indicates some kind of error:
     if (assoc.error) {
-      lggr.error(ERR_TITLE + ' ' + fcName + '\n'
+      lggr.error(MODULE_TITLE + ' ' + fcName + '\n'
           + '  Failed to unrar "' + srcPath + '"\n'
           + ' ' + assoc.stderr);
 

@@ -28,8 +28,9 @@
   var isSolidArray = util.isSolidArray;
   var isSolidString = util.isSolidString;
   var isPureNumber = util.isPureNumber;
-  var isSameStr = util.types.isSameMeaning;
+  var isSameStr = util.isSameMeaning;
   var insp = util.inspect;
+  var includes = util.includes;
   var parseDate = util.createDateString;
   var execFile = child_process.execFile;
   var execFileSync = child_process.execFileSync;
@@ -40,11 +41,11 @@
   /** @constant {string} */
   var MODULE_TITLE = 'WshZLIB/ZLIB.js';
 
-  /** @constant {string} */
   var DEF_DIR_7ZIP = 'C:\\Program Files\\7-Zip';
+  var EXENAME_7Z = '7z.exe';
 
   /** @constant {string} */
-  var EXENAME_7Z = '7z.exe';
+  var DEF_7ZIP_EXE = path.join(DEF_DIR_7ZIP, EXENAME_7Z);
 
   /** @constant {string} */
   var EXENAME_7ZFM = '7zFM.exe';
@@ -66,12 +67,47 @@
     util.throwTypeError('string', MODULE_TITLE, functionName, typeErrVal);
   };
 
+  // zlib._createTmpListFile {{{
   /**
-   * @description 7-Zip {{{
-7-Zip [32] 16.04 : Copyright (c) 1999-2016 Igor Pavlov : 2016-10-04
+   * Creates a temporary list file.
+   *
+   * @function _createTmpListFile
+   * @memberof Wsh.ZLIB
+   * @param {string[]|string} paths - The file paths.
+   * @param {object} [options] - Optional parameters.
+   * @param {string} [options.encoding='utf8'] - The character encoding.
+   * @param {string} [options.eol='\n'] - The character of EOL (end of line).
+   * @returns {string} - The created temporary file path.
+   */
+  zlib._createTmpListFile = function (paths, options) {
+    var FN = 'zlib._createTmpListFile';
 
-Usage: 7z <command> [<switches>...] <archive_name> [<file_names>...]
-       [<@listfiles...>]
+    if (!isSolidArray(paths) && !isSolidString(paths)) {
+      throwErrInvalidValue(FN, 'paths', paths);
+    }
+
+    // Setting excluding filepaths (-x)
+    var encoding = obtain(options, 'encoding', 'utf8');
+    var eol = obtain(options, 'eol', '\n');
+    var writeData;
+
+    if (isSolidArray(paths)) {
+      writeData = paths.reduce(function (acc, p) {
+        return acc + p + eol;
+      }, '');
+    } else {
+      writeData = paths + eol;
+    }
+
+    return fs.writeTmpFileSync(writeData, { encoding: encoding });
+  }; // }}}
+
+  // 7-Zip Command Line User's Guide
+  /**
+   * [7-Zip Command Line Version User's Guide](https://sevenzip.osdn.jp/chm/cmdline/index.htm)
+7-Zip (a) 22.00 (x64) : Copyright (c) 1999-2022 Igor Pavlov : 2022-06-15
+
+Usage: 7za <command> [<switches>...] <archive_name> [<file_names>...] [@listfile]
 
 <Commands>
   a : Add files to archive
@@ -87,7 +123,7 @@ Usage: 7z <command> [<switches>...] <archive_name> [<file_names>...]
   x : eXtract files with full paths
 
 <Switches>
-  -- : Stop switches parsing
+  -- : Stop switches and @listfile parsing
   -ai[r[-|0]]{@listfile|!wildcard} : Include archives
   -ax[r[-|0]]{@listfile|!wildcard} : eXclude archives
   -ao{a|s|t|u} : set Overwrite mode
@@ -102,7 +138,7 @@ Usage: 7z <command> [<switches>...] <archive_name> [<file_names>...]
     -mx[N] : set compression level: -mx1 (fastest) ... -mx9 (ultra)
   -o{Directory} : set Output directory
   -p{Password} : set Password
-  -r[-|0] : Recurse subdirectories
+  -r[-|0] : Recurse subdirectories for name search
   -sa{a|e|s} : set Archive name mode
   -scc{UTF-8|WIN|DOS} : set charset for for console input/output
   -scs{UTF-8|UTF-16LE|UTF-16BE|WIN|DOS|{id}} : set charset for list files
@@ -122,6 +158,8 @@ Usage: 7z <command> [<switches>...] <archive_name> [<file_names>...]
   -spe : eliminate duplication of root folder for extract command
   -spf : use fully qualified file paths
   -ssc[-] : set sensitive case mode
+  -sse : stop archive creating, if it can't open some input file
+  -ssp : do not change Last Access Time of source files while archiving
   -ssw : compress shared files
   -stl : set archive timestamp from the most recently modified file
   -stm{HexMask} : set CPU thread affinity mask (hexadecimal number)
@@ -131,7 +169,7 @@ Usage: 7z <command> [<switches>...] <archive_name> [<file_names>...]
   -v{Size}[b|k|m|g] : Create volumes
   -w[{path}] : assign Work directory. Empty path means a temporary directory
   -x[r[-|0]]{@listfile|!wildcard} : eXclude filenames
-  -y : assume Yes on all queries }}}
+  -y : assume Yes on all queries
   */
 
   // zlib.deflateSync {{{
@@ -140,27 +178,33 @@ Usage: 7z <command> [<switches>...] <archive_name> [<file_names>...]
    *
    * @function deflateSync
    * @memberof Wsh.ZLIB
-   * @param {string[]|string} paths - The filepaths that compressed.
+   * @param {string[]|string} paths - The compressed file paths. If a directory is specified, all of them are compressed, including sub directories. If you use a wildcard to specify the paths, you can use the R option to control the files contained in the sub directories.
    * @param {string} [dest] - The filepath or directory of destination ZIP.
    * @param {object} [options] - Optional parameters.
-   * @param {string} [options.dir7zip=DEF_DIR_7ZIP] - A custom directory path of 7-ZIP.
+   * @param {string} [options.exe7zip=DEF_7ZIP_EXE] - A custom .exe path of 7-ZIP.
+   * @param {boolean} [options.includesSubDir=false] - Whether include sub directories when you specified wildcard or filename to `paths`.
+   * @param {boolean} [options.updateMode='sync'] - A method of overwriting an existing dest Zip file. "sync" (default) or "add"
    * @param {string} [options.dateCode] - If specify "yyyy-MM-dd" to Zipfile name is <name>_yyyy-MM-dd.zip
    * @param {number|string} [options.compressLv=5] Level of compression. 1,3,5,7,9 or Fastest, Fast, Normal, Maximum, Ultra
-   * @param {string[]|string} [options.excludePaths]
-   * @param {string} [options.password] - -p (set password)
+   * @param {string[]|string} [options.excludePaths] - You should specify relative paths with a wildcard. Cannot establish absolute paths.
+   * @param {string} [options.password] - Specifies password. File names will be not encrypted in Zip archive.
    * @param {string} [options.workingDir] - Working directory
    * @param {boolean} [options.outputsLog=false] - Output console logs.
+   * @param {boolean} [options.savesTmpList=false] - Does not remove temporary file list.
    * @param {boolean} [options.isDryRun=false] - No execute, returns the string of command.
    * @returns {object|string} - See {@link https://docs.tuckn.net/WshChildProcess/global.html#typeRunSyncReturn|typeRunSyncReturn}. If options.isDryRun is true, returns string.
    */
   zlib.deflateSync = function (paths, dest, options) {
     var FN = 'zlib.deflateSync';
 
-    if (isEmpty(paths)) throwErrInvalidValue(FN, 'paths', paths);
+    if (!isSolidArray(paths) && !isSolidString(paths)) {
+      throwErrInvalidValue(FN, 'paths', paths);
+    }
 
     var outputsLog = obtain(options, 'outputsLog', false);
+    var isDryRun = obtain(options, 'isDryRun', false);
 
-    // Setting arguments
+    // Setting core arguments
     if (outputsLog) {
       // console.log('a: Add files to archive');
       console.log('u : Update files to archive');
@@ -168,9 +212,21 @@ Usage: 7z <command> [<switches>...] <archive_name> [<file_names>...]
       console.log('-ssw: Compress shared(locked) files');
     }
     var argsStr = 'u -tzip -ssw';
-    var args = ['u', '-tzip', '-ssw'];
 
-    // Set compression level (-mx1(fastest) ... -mx9(ultra)')
+    // Setting Recurse switch
+    var includesSubDir = obtain(options, 'includesSubDir', false);
+    var rc = '';
+
+    if (includesSubDir) {
+      if (outputsLog) console.log('-r: Include subdirectories (When specified wildcard or filename)');
+      argsStr += ' -r';
+      rc = 'r';
+    } else {
+      if (outputsLog) console.log('-r-: Not include subdirectories (When specified wildcard or filename)');
+      argsStr += ' -r-';
+    }
+
+    // Setting the level of compression (-mx1(fastest) ... -mx9(ultra)')
     var compressLv = obtain(options, 'compressLv', null);
     if (isPureNumber(compressLv) || isSolidString(compressLv)) {
       var lv = compressLv.toString().toUpperCase().trim();
@@ -191,135 +247,112 @@ Usage: 7z <command> [<switches>...] <archive_name> [<file_names>...]
       if (outputsLog) console.log(mxN + ': Set compression level (-mx1(fastest) ... -mx9(ultra)');
 
       argsStr += ' ' + mxN;
-      args.push(mxN);
     }
 
-    // Set a zip password (-p{Password})
-    //   -mhe=on Encode a archive header(.7z only!)
-    // @note .zipの場合、暗号化しても格納ファイルの構造は見れちゃう
+    // Setting a zip password (-p{Password})
+    // @note File names will be not encrypted in Zip archive.
+    // Encode an archive header option, -mhe=on can be used by .7z only!
     var password = obtain(options, 'password', null);
     if (!isEmpty(password)) {
       if (outputsLog) console.log('-p"****": Set the password (-mem=AES256)');
-      argsStr += ' -p"' + os.escapeForCmd(password) + '"' + '-mem=AES256';
-      args.push('-p"' + password + '"', '-mem=AES256');
+      argsStr += ' -p"' + password + '" -mem=AES256';
     }
 
-    // Assign a working directory (-w[{path}])
+    // Assign the working directory (-w[{path}])
     var workingDir = obtain(options, 'workingDir', null);
     if (!isEmpty(workingDir)) {
-      if (outputsLog) console.log('-w"' + workingDir + '": Assign the working directory');
+      if (outputsLog) {
+        console.log('-w"' + workingDir + '": Assign the working directory');
+      }
       argsStr += ' -w"' + workingDir + '"';
-      args.push('-w"' + workingDir + '"');
     }
 
-    // Set exclude of filepaths (-xr!"path")
+    // Setting excluding filepaths (-x)
     var excludePaths = obtain(options, 'excludePaths', null);
+    var excludeListFile;
+
     if (!isEmpty(excludePaths)) {
-      var excludePathsStr = '';
-
-      if (isSolidArray(excludePaths)) {
-        excludePaths.forEach(function (val) {
-          args.push('-xr!"' + val + '"');
-          // excludePathsStr += '"' + val + '", ';
-        });
-
-        excludePathsStr = excludePaths.reduce(function (acc, p) {
-          return acc + ' "' + p + '"';
-        }, '');
-
-        argsStr += excludePathsStr;
-      } else {
-        excludePathsStr = '"' + excludePaths + '"';
-        argsStr += ' ' + excludePathsStr;
-        args.push('-xr!"' + excludePaths + '"');
-      }
+      excludeListFile = zlib._createTmpListFile(excludePaths);
+      argsStr += ' -x' + rc + '@"' + excludeListFile + '"';
 
       if (outputsLog) {
-        console.log('-xr!: Set exclude of filepaths ' + excludePathsStr);
+        console.log('-x: Set excluding filepaths ' + insp(excludePaths));
+        console.log('Excluding list file: ' + excludeListFile);
       }
-    }
-
-    var srcPathsStr = '';
-    var srcPaths = [];
-    if (isSolidArray(paths)) {
-      paths.forEach(function (val) {
-        if (isEmpty(val)) return;
-        srcPaths.push(path.resolve(val));
-      });
-
-      srcPathsStr = paths.reduce(function (acc, p) {
-        return acc + ' "' + p + '"';
-      }, '');
-
-      argsStr += srcPathsStr;
-    } else if (isSolidString(paths)) {
-      argsStr += ' "' + paths + '"';
-      srcPaths.push(paths);
-    } else {
-      throwErrInvalidValue(FN, 'paths', paths);
     }
 
     // Setting the destination ZIP file path
     var destZip = dest;
+    var srcPath1 = isSolidArray(paths) ? paths[0] : paths;
 
     if (isEmpty(destZip)) {
-      destZip = srcPaths[0].replace(/\*/g, '').replace(/\\?$/, '.zip');
+      if (fs.existsSync(srcPath1) && fs.statSync(srcPath1).isDirectory()) {
+        destZip = srcPath1 + '.zip';
+      } else if (/\\\*$/.test(srcPath1)) {
+        destZip = path.dirname(srcPath1).replace(/\\\*$/, '') + '.zip';
+      } else {
+        destZip = srcPath1.replace(/\*/g, 'xxx') + '.zip';
+      }
     } else if (fs.existsSync(destZip) && fs.statSync(destZip).isDirectory()) {
       // When specified the dest and it's a existing directory,
-      destZip = destZip.replace(/\\?$/, path.sep + path.basename(srcPaths[0]) + '.zip');
-    } else {
-      // Create new or overwrite?
+      if (fs.existsSync(srcPath1) && fs.statSync(srcPath1).isDirectory()) {
+        destZip = path.join(destZip, path.basename(srcPath1) + '.zip');
+      } else {
+        destZip = path.join(
+          destZip,
+          path.basename(srcPath1).replace(/\*/g, 'xxx') + '.zip'
+        );
+      }
     }
-
-    var destZipDir = path.dirname(destZip);
-    if (!fs.existsSync(destZipDir)) fse.ensureDirSync(destZipDir);
 
     // Appends the current date string to an archive name.
     var dateCode = obtain(options, 'dateCode', null);
     if (isSolidString(dateCode)) {
-      destZip = destZip.replace(/\.zip$/i, '_' + parseDate(dateCode) + '.zip');
+      destZip = destZip.replace(/(\.zip)?$/i, '_' + parseDate(dateCode) + '$1');
     }
 
-    // // @TODO 同名のファイルがある場合
-    // if (fs.statSync(destZip).isFile()) {
-    //   if (fs.statSync(destZip + '.tmp').isFile()) { // .zip.tmpすらある場合削除
-    //     fs.unlinkSync(destZip + '.tmp');
-    //   }
-    //
-    //   fso.MoveFile(destZip, destZip + '.tmp');
-    // }
+    // Setting the updating method and adding the dest path to args.
+    var updateMode = obtain(options, 'updateMode', 'SYNC');
+    if (fs.existsSync(destZip)) {
+      if (isSameStr(updateMode, 'SYNC')) {
+        argsStr += ' -up0q0r2x1y1z1w2';
+      }
+    }
 
+    // Adding the dest zip path and source paths.
     argsStr += ' "' + destZip + '"';
-    args.push(destZip);
 
-    // Adding the filepaths to the 7-ZIP argument.
-    srcPaths.forEach(function (val) {
-      args.push(val);
-    });
+    // Setting source file paths
+    var srcListFile = zlib._createTmpListFile(paths);
+    argsStr += ' ' + '@"' + srcListFile + '"';
 
-    // TODO:
-    // Set exclude of filelists (-xr@"path")
+    if (outputsLog) {
+      console.log('Set compressed filepaths ' + insp(paths));
+      console.log('Compressed list file: ' + excludeListFile);
+    }
 
     // Executing
     // Setting the .exe path
-    var dir7zip = obtain(options, 'dir7zip', DEF_DIR_7ZIP);
-    var exe7z = path.join(dir7zip, EXENAME_7Z);
+    var exe7z = obtain(options, 'exe7zip', DEF_7ZIP_EXE);
+    var cmd = '"' + exe7z + '" ' + argsStr;
 
-    if (outputsLog) console.log('7zip path: ' + exe7z);
-    if (outputsLog) console.log('arguments: ' + args.join(' '));
+    if (outputsLog) {
+      console.log('exe path: ' + exe7z);
+      console.log('arguments: ' + argsStr);
+      console.log('command: ' + cmd);
+    }
 
-    var isDryRun = obtain(options, 'isDryRun', false);
-
-    var rtn1 = execSync('"' + exe7z + '" ' + argsStr, {
+    var rtn = execSync(cmd, {
       winStyle: CD.windowStyles.hidden,
       isDryRun: isDryRun
     });
-    console.log(rtn1); // rtn is {string}
 
-    var rtn = execFileSync(exe7z, args, {
-      winStyle: CD.windowStyles.hidden,
-      isDryRun: isDryRun
-    });
+    // Remove lists
+    var savesTmpList = obtain(options, 'savesTmpList', false);
+    if (!savesTmpList) {
+      if (excludeListFile) fse.removeSync(excludeListFile);
+      fse.removeSync(srcListFile);
+    }
 
     if (isDryRun) return rtn; // rtn is {string}
 
@@ -332,6 +365,20 @@ Usage: 7z <command> [<switches>...] <archive_name> [<file_names>...]
         + '  at ' + FN + ' (' + MODULE_TITLE + ')');
     }
 
+    // @TODO execSync can not receive exitCode... But execFileSync can not get stdout, now.
+
+    if (includes(rtn.stdout, 'Everything is Ok')) {
+      if (outputsLog) console.log('No error');
+      return rtn;
+    }
+
+    throw new Error(
+      'The compressing process is failed\n'
+      + ' ' + rtn.stderr
+      + '  at ' + FN + ' (' + MODULE_TITLE + ')'
+    );
+
+    /* Exit Code Handling
     // 0: No error
     if (rtn.exitCode === 0) {
       if (outputsLog) console.log('No error');
@@ -389,6 +436,7 @@ Usage: 7z <command> [<switches>...] <archive_name> [<file_names>...]
       + ' ' + rtn.stderr
       + '  at ' + FN + ' (' + MODULE_TITLE + ')'
     );
+    */
 
     // // @TODO 退避させた同名ファイルの処理
     // if (fs.statSync(newZipPath + '.tmp').isFile()) {

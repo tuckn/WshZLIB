@@ -1,11 +1,11 @@
 ﻿<package>
   <!-- dependencies -->
   <resource id="WshJest">https://github.com/tuckn/WshJest.git</resource>
-  <resource id="WshChildProcess">https://github.com/tuckn/WshChildProcess.git</resource>
+  <resource id="WshNet">https://github.com/tuckn/WshNet.git</resource>
 
   <!-- scripts: test -->
   <job id = "test:ZLIB">
-    <script language="JScript" src="./WshModules/WshChildProcess/dist/bundle.js"></script>
+    <script language="JScript" src="./WshModules/WshNet/dist/bundle.js"></script>
     <script language="JScript" src="./src/ZLIB.js"></script>
     <script language="JScript" src="./WshModules/WshJest/dist/app.js"></script>
     <script language="JScript" src="./src/ZLIB.test.js"></script>
@@ -16,13 +16,13 @@
     <script language="JScript" src="./src/ZLIB.js"></script>
   </job>
   <job id = "./dist/bundle.js">
-    <script language="JScript" src="./WshModules/WshChildProcess/dist/bundle.js"></script>
+    <script language="JScript" src="./WshModules/WshNet/dist/bundle.js"></script>
     <script language="JScript" src="./src/ZLIB.js"></script>
   </job>
 
   <!-- scripts: test dist -->
   <job id = "test:dist:module">
-    <script language="JScript" src="./WshModules/WshChildProcess/dist/bundle.js"></script>
+    <script language="JScript" src="./WshModules/WshNet/dist/bundle.js"></script>
     <script language="JScript" src="./dist/module.js"></script>
     <script language="JScript" src="./WshModules/WshJest/dist/app.js"></script>
     <script language="JScript" src="./src/ZLIB.test.js"></script>

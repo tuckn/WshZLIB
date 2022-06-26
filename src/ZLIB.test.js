@@ -22,11 +22,12 @@ var _cb = function (fn/* , args */) {
 describe('ZLIB', function () {
   var testName;
 
-  var DEF_7ZIP_EXE = 'C:\\Program Files\\7-Zip\\7z.exe';
+  var DEF_7Z_EXE = 'C:\\Program Files\\7-Zip\\7z.exe';
 
   var dirAssets = path.join(__dirname, 'assets');
   var dir7zip = path.join(dirAssets, '7-Zip');
-  var exe7zip = path.join(dir7zip, '7z.exe');
+  var exe7z = path.join(dir7zip, '7z.exe');
+  var exe7zFM = path.join(dir7zip, '7zFM.exe');
 
   var dirSandbox = path.join(dirAssets, 'Sandbox');
   var dirZipping = path.join(dirSandbox, 'ZippingDir');
@@ -43,7 +44,7 @@ describe('ZLIB', function () {
   test(testName, function () {
     // The top folder (ZippingDir) will not be included in the Zip archive.
     var cmd = zlib.deflateSync(path.join(dirZipping, '*'), null, {
-      exe7zip: exe7zip
+      exe7z: exe7z
     });
     console.dir(cmd);
     return;
@@ -57,7 +58,7 @@ describe('ZLIB', function () {
     cmd = zlib.deflateSync(dirZipping, null, {
       isDryRun: true
     });
-    expect(cmd).toContain('"' + DEF_7ZIP_EXE + '" u -tzip -ssw -r-');
+    expect(cmd).toContain('"' + DEF_7Z_EXE + '" u -tzip -ssw -r-');
     expect(cmd).toContain(' -r- "' + dirZipping + '.zip"'); // dest
     expect(cmd).toContain('.zip" @"'); // src @TODO Check tmp list
     expect(cmd).not.toContain(' -mx');
@@ -70,7 +71,7 @@ describe('ZLIB', function () {
     cmd = zlib.deflateSync(dirZipping, dirDest, {
       isDryRun: true
     });
-    expect(cmd).toContain('"' + DEF_7ZIP_EXE + '" u -tzip -ssw -r-');
+    expect(cmd).toContain('"' + DEF_7Z_EXE + '" u -tzip -ssw -r-');
     expect(cmd).toContain(' -r- "' + dirDest + '\\' + path.basename(dirZipping) + '.zip"'); // dest
     expect(cmd).toContain('.zip" @"'); // src @TODO Check tmp list
     expect(cmd).not.toContain(' -mx');
@@ -83,7 +84,7 @@ describe('ZLIB', function () {
     cmd = zlib.deflateSync(files1, null, {
       isDryRun: true
     });
-    expect(cmd).toContain('"' + DEF_7ZIP_EXE + '" u -tzip -ssw -r-');
+    expect(cmd).toContain('"' + DEF_7Z_EXE + '" u -tzip -ssw -r-');
     expect(cmd).toContain(' -r- "' + path.dirname(files1[0]) + '\\' + path.basename(files1[0]) + '.zip"'); // dest
     expect(cmd).toContain('.zip" @"'); // src @TODO Check tmp list
     // expect(cmd).toContain(' "' + files1[0] + '"'); // src
@@ -98,7 +99,7 @@ describe('ZLIB', function () {
     cmd = zlib.deflateSync(files1, dirDest, {
       isDryRun: true
     });
-    expect(cmd).toContain('"' + DEF_7ZIP_EXE + '" u -tzip -ssw -r-');
+    expect(cmd).toContain('"' + DEF_7Z_EXE + '" u -tzip -ssw -r-');
     expect(cmd).toContain(' -r- "' + dirDest + '\\' + path.basename(files1[0]) + '.zip"'); // dest
     expect(cmd).toContain('.zip" @"'); // src @TODO Check tmp list
     // expect(cmd).toContain(' "' + files1[0] + '"'); // src
@@ -117,7 +118,7 @@ describe('ZLIB', function () {
     // Custom 7-Zip {{{
     var exe7zCustomPath = 'D:\\My Custom Apps\\7-Zip\\7z.exe';
     cmd = zlib.deflateSync(dirZipping, null, {
-      exe7zip: exe7zCustomPath,
+      exe7z: exe7zCustomPath,
       isDryRun: true
     });
     expect(cmd).toContain('"' + exe7zCustomPath + '" u -tzip -ssw -r-');
@@ -134,7 +135,7 @@ describe('ZLIB', function () {
       dateCode: 'yyyyMMdd-HHmmss',
       isDryRun: true
     });
-    expect(cmd).toContain('"' + DEF_7ZIP_EXE + '" u -tzip -ssw -r-');
+    expect(cmd).toContain('"' + DEF_7Z_EXE + '" u -tzip -ssw -r-');
     expect(cmd).toContain(' -r- "' + dirZipping); // dest
     expect(cmd).toMatch(/_\d{8}-\d{6}\.zip/); // dest
     expect(cmd).toContain('.zip" @"'); // src @TODO Check tmp list
@@ -149,7 +150,7 @@ describe('ZLIB', function () {
       compressLv: 'Maximum',
       isDryRun: true
     });
-    expect(cmd).toContain('"' + DEF_7ZIP_EXE + '" u -tzip -ssw -r-');
+    expect(cmd).toContain('"' + DEF_7Z_EXE + '" u -tzip -ssw -r-');
     expect(cmd).toContain(' "' + dirZipping + '.zip"'); // dest
     expect(cmd).toContain('.zip" @"'); // src @TODO Check tmp list
     expect(cmd).toContain(' -mx7');
@@ -176,7 +177,7 @@ describe('ZLIB', function () {
       password: password,
       isDryRun: true
     });
-    expect(cmd).toContain('"' + DEF_7ZIP_EXE + '" u -tzip -ssw -r-');
+    expect(cmd).toContain('"' + DEF_7Z_EXE + '" u -tzip -ssw -r-');
     expect(cmd).toContain(' "' + dirZipping + '.zip"'); // dest
     expect(cmd).toContain('.zip" @"'); // src @TODO Check tmp list
     expect(cmd).not.toContain(' -mx');
@@ -191,7 +192,7 @@ describe('ZLIB', function () {
       workingDir: tmpDir,
       isDryRun: true
     });
-    expect(cmd).toContain('"' + DEF_7ZIP_EXE + '" u -tzip -ssw -r-');
+    expect(cmd).toContain('"' + DEF_7Z_EXE + '" u -tzip -ssw -r-');
     expect(cmd).toContain(' "' + dirZipping + '.zip"'); // dest
     expect(cmd).toContain('.zip" @"'); // src @TODO Check tmp list
     expect(cmd).not.toContain(' -mx');
@@ -209,7 +210,7 @@ describe('ZLIB', function () {
       excludePaths: baseNames,
       isDryRun: true
     });
-    expect(cmd).toContain('"' + DEF_7ZIP_EXE + '" u -tzip -ssw -r-');
+    expect(cmd).toContain('"' + DEF_7Z_EXE + '" u -tzip -ssw -r-');
     expect(cmd).toContain(' "' + dirZipping + '.zip"'); // dest
     expect(cmd).toContain('.zip" @"'); // src @TODO Check tmp list
     expect(cmd).not.toContain(' -mx');
@@ -239,19 +240,19 @@ describe('ZLIB', function () {
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
 
-    cmd = zlib.deflateSync(dirZipping, null, { exe7zip: exe7zip });
+    cmd = zlib.deflateSync(dirZipping, null, { exe7z: exe7z });
     expect(cmd.error).toBe(false);
     expect(isEmpty(cmd.stderr)).toBe(true);
     expect(fs.existsSync(destPath)).toBe(true);
 
-    fse.removeSync(dirZipping + '.zip'); // Clean
+    fse.removeSync(destPath); // Clean
 
     // source: directory, dest: directory (existing)
     destPath = path.join(dirDest, path.basename(dirZipping) + '.zip');
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
 
-    cmd = zlib.deflateSync(dirZipping, dirDest, { exe7zip: exe7zip });
+    cmd = zlib.deflateSync(dirZipping, dirDest, { exe7z: exe7z });
     expect(cmd.error).toBe(false);
     expect(isEmpty(cmd.stderr)).toBe(true);
     expect(fs.existsSync(destPath)).toBe(true);
@@ -263,7 +264,7 @@ describe('ZLIB', function () {
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
 
-    cmd = zlib.deflateSync(dirZipping, destPath, { exe7zip: exe7zip });
+    cmd = zlib.deflateSync(dirZipping, destPath, { exe7z: exe7z });
     expect(cmd.error).toBe(false);
     expect(isEmpty(cmd.stderr)).toBe(true);
     expect(fs.existsSync(destPath)).toBe(true);
@@ -277,7 +278,7 @@ describe('ZLIB', function () {
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
 
-    cmd = zlib.deflateSync(files1, null, { exe7zip: exe7zip });
+    cmd = zlib.deflateSync(files1, null, { exe7z: exe7z });
     expect(cmd.error).toBe(false);
     expect(isEmpty(cmd.stderr)).toBe(true);
     expect(fs.existsSync(destPath)).toBe(true);
@@ -289,7 +290,7 @@ describe('ZLIB', function () {
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
 
-    cmd = zlib.deflateSync(files1, dirDest, { exe7zip: exe7zip });
+    cmd = zlib.deflateSync(files1, dirDest, { exe7z: exe7z });
     expect(cmd.error).toBe(false);
     expect(isEmpty(cmd.stderr)).toBe(true);
     expect(fs.existsSync(destPath)).toBe(true);
@@ -301,7 +302,7 @@ describe('ZLIB', function () {
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
 
-    cmd = zlib.deflateSync(files1, destPath, { exe7zip: exe7zip });
+    cmd = zlib.deflateSync(files1, destPath, { exe7z: exe7z });
     expect(cmd.error).toBe(false);
     expect(isEmpty(cmd.stderr)).toBe(true);
     expect(fs.existsSync(destPath)).toBe(true);
@@ -318,7 +319,7 @@ describe('ZLIB', function () {
     // @NOTE The top folder (ZippingDir) will not be included in the Zip archive.
     // When specifying '\\*', All files and sub directories will be compressed.
     cmd = zlib.deflateSync(path.join(dirZipping, '*'), null, {
-      exe7zip: exe7zip
+      exe7z: exe7z
     });
     expect(cmd.error).toBe(false);
     expect(isEmpty(cmd.stderr)).toBe(true);
@@ -332,7 +333,7 @@ describe('ZLIB', function () {
     expect(fs.existsSync(destPath)).toBe(false);
 
     cmd = zlib.deflateSync(path.join(dirZipping, '*'), dirDest, {
-      exe7zip: exe7zip
+      exe7z: exe7z
     });
     expect(cmd.error).toBe(false);
     expect(isEmpty(cmd.stderr)).toBe(true);
@@ -346,7 +347,7 @@ describe('ZLIB', function () {
     expect(fs.existsSync(destPath)).toBe(false);
 
     cmd = zlib.deflateSync(path.join(dirZipping, '*'), destPath, {
-      exe7zip: exe7zip
+      exe7z: exe7z
     });
     expect(cmd.error).toBe(false);
     expect(isEmpty(cmd.stderr)).toBe(true);
@@ -364,7 +365,7 @@ describe('ZLIB', function () {
     // @NOTE The top folder (ZippingDir) will not be included in the Zip archive.
     // When specifying '\\*.txt', All .txt files in only the root directory will be compressed.
     cmd = zlib.deflateSync(path.join(dirZipping, '*.txt'), null, {
-      exe7zip: exe7zip
+      exe7z: exe7z
     });
     expect(cmd.error).toBe(false);
     expect(isEmpty(cmd.stderr)).toBe(true);
@@ -379,7 +380,7 @@ describe('ZLIB', function () {
 
     cmd = zlib.deflateSync(path.join(dirZipping, '*.txt'), dirDest, {
       includesSubDir: true,
-      exe7zip: exe7zip
+      exe7z: exe7z
     });
     expect(cmd.error).toBe(false);
     expect(isEmpty(cmd.stderr)).toBe(true);
@@ -393,7 +394,7 @@ describe('ZLIB', function () {
     expect(fs.existsSync(destPath)).toBe(false);
 
     cmd = zlib.deflateSync(path.join(dirZipping, '*.txt'), destPath, {
-      exe7zip: exe7zip
+      exe7z: exe7z
     });
     expect(cmd.error).toBe(false);
     expect(isEmpty(cmd.stderr)).toBe(true);
@@ -411,12 +412,12 @@ describe('ZLIB', function () {
     // Custom 7-Zip
     var exe7zNonExisting = 'R:\\My Custom Apps\\7-Zip\\7z.exe';
     expect(_cb(zlib.deflateSync, dirZipping, null, {
-      exe7zip: exe7zNonExisting
+      exe7z: exe7zNonExisting
     })).toThrowError();
 
     // DateCode Option {{{
     cmd = zlib.deflateSync(dirZipping, dirDest, {
-      exe7zip: exe7zip,
+      exe7z: exe7z,
       dateCode: 'yyyyMMdd-HHmmss'
     });
     expect(cmd.error).toBe(false);
@@ -438,7 +439,7 @@ describe('ZLIB', function () {
 
     cmd = zlib.deflateSync(dirZipping, dirDest, {
       compressLv: 9,
-      exe7zip: exe7zip
+      exe7z: exe7z
     });
     expect(cmd.error).toBe(false);
     expect(isEmpty(cmd.stderr)).toBe(true);
@@ -457,7 +458,7 @@ describe('ZLIB', function () {
     var password = 'This is mY&p@ss ^_<';
     cmd = zlib.deflateSync(dirZipping, dirDest, {
       password: password,
-      exe7zip: exe7zip
+      exe7z: exe7z
     });
     expect(cmd.error).toBe(false);
     expect(isEmpty(cmd.stderr)).toBe(true);
@@ -486,7 +487,7 @@ describe('ZLIB', function () {
     // @NOTE Since `includesSubDir` option is not specified, all files are compressed. The exclusive list is useless.
     cmd = zlib.deflateSync(dirZipping, dirDest, {
       excludePaths: baseNames,
-      exe7zip: exe7zip
+      exe7z: exe7z
     });
     expect(cmd.error).toBe(false);
     expect(isEmpty(cmd.stderr)).toBe(true);
@@ -500,7 +501,7 @@ describe('ZLIB', function () {
     cmd = zlib.deflateSync(dirZipping, dirDest, {
       excludePaths: baseNames,
       includesSubDir: true,
-      exe7zip: exe7zip
+      exe7z: exe7z
     });
     expect(cmd.error).toBe(false);
     expect(isEmpty(cmd.stderr)).toBe(true);
@@ -515,7 +516,7 @@ describe('ZLIB', function () {
       excludePaths: ['*SJIS*'],
       includesSubDir: true,
       outputsLog: true,
-      exe7zip: exe7zip
+      exe7z: exe7z
     });
     expect(cmd.error).toBe(false);
     expect(isEmpty(cmd.stderr)).toBe(true);
@@ -537,30 +538,139 @@ describe('ZLIB', function () {
     expect(fs.existsSync(destPath)).toBe(false);
 
     cmd = zlib.deflateSync(path.join(dirZipping, '*SJIS*'), destPath, {
-      outputsLog: true,
-      exe7zip: exe7zip
+      exe7z: exe7z
+    });
+    expect(cmd.error).toBe(false);
+    expect(isEmpty(cmd.stderr)).toBe(true);
+    expect(fs.existsSync(destPath)).toBe(true);
+
+    console.popup('Check the Zip: ' + destPath);
+    // @TODO Confirm the content in the file.
+
+    // updateMode: sync (default)
+    cmd = zlib.deflateSync(path.join(dirZipping, '*UTF8*'), destPath, {
+      exe7z: exe7z
+    });
+    expect(cmd.error).toBe(false);
+    expect(isEmpty(cmd.stderr)).toBe(true);
+    expect(fs.existsSync(destPath)).toBe(true);
+
+    console.popup('Check the Zip: ' + destPath);
+    // @TODO Confirm the content in the file.
+
+    // updateMode: add
+    cmd = zlib.deflateSync(path.join(dirZipping, '*.ico'), destPath, {
+      updateMode: 'add',
+      exe7z: exe7z
     });
     console.dir(cmd);
     expect(cmd.error).toBe(false);
     expect(isEmpty(cmd.stderr)).toBe(true);
     expect(fs.existsSync(destPath)).toBe(true);
 
+    console.popup('Check the Zip: ' + destPath);
     // @TODO Confirm the content in the file.
 
-    // updateMode: sync (default)
-    cmd = zlib.deflateSync(path.join(dirZipping, '*UTF8*'), destPath, {
+    // updateMode: add
+    cmd = zlib.deflateSync(path.join(dirZipping, '*.ico'), destPath, {
+      updateMode: 'add',
+      includesSubDir: true,
       outputsLog: true,
-      exe7zip: exe7zip
+      exe7z: exe7z
     });
+    console.dir(cmd);
+    expect(cmd.error).toBe(false);
     expect(isEmpty(cmd.stderr)).toBe(true);
-    expect(fs.existsSync(destPath)).toBe(false);
+    expect(fs.existsSync(destPath)).toBe(true);
 
-    console.popup('Check the Zip');
+    console.popup('Check the Zip: ' + destPath);
     // @TODO Confirm the content in the file.
 
-    return;
     fse.removeSync(destPath); // Clean
+  });
 
+  testName = 'openZip';
+  test(testName, function () {
+    var zipPath;
+
+    // Create the opening Zip
+    zipPath = path.join(dirDest, 'My New Archive for openZip.zip');
+    fse.removeSync(zipPath);
+    zlib.deflateSync(dirZipping, zipPath, { exe7z: exe7z });
+
+    // Opening
+    var exe7zFmNonExisting = 'R:\\My Custom Apps\\7-Zip\\7zFM.exe';
+    expect(_cb(zlib.openZip, zipPath, { exe7zFM: exe7zFmNonExisting })).toThrowError();
+
+    zlib.openZip(zipPath, { exe7zFM: exe7zFM });
+
+    fse.removeSync(zipPath); // Clean
+  });
+
+  testName = 'unzipSync_dryRun';
+  test(testName, function () {
+    var zipPath;
+    var destPath;
+    var cmd;
+
+    zipPath = path.join(dirDest, 'My New Archive for openZip.zip');
+    destPath = path.join(dirDest, 'My New Archive for openZip');
+
+    cmd = zlib.unzipSync(zipPath, null, {
+      // makeDir: true,
+      isDryRun: true
+    });
+    expect(cmd).toContain('"' + DEF_7Z_EXE + '" x ');
+    expect(cmd).toContain(' x "' + zipPath + '"');
+    expect(cmd).toContain(' -o"' + destPath + '"');
+
+    cmd = zlib.unzipSync(zipPath, null, {
+      makeDir: true,
+      isDryRun: true
+    });
+    expect(cmd).toContain('"' + DEF_7Z_EXE + '" x ');
+    expect(cmd).toContain(' x "' + zipPath + '"');
+    expect(cmd).toContain(' -o"' + destPath + '"');
+
+    // makeDir: false
+    cmd = zlib.unzipSync(zipPath, null, {
+      makesDir: false,
+      isDryRun: true
+    });
+    expect(cmd).toContain('"' + DEF_7Z_EXE + '" x ');
+    expect(cmd).toContain(' x "' + zipPath + '"');
+    expect(cmd).toContain(' -o"' + dirDest + '"');
+  });
+
+  testName = 'unzipSync';
+  test(testName, function () {
+    var zipPath;
+    var cmd;
+
+    // Create the unzipping archive
+    zipPath = path.join(dirDest, 'My New Archive for openZip.zip');
+    fse.removeSync(zipPath);
+
+    zlib.deflateSync(dirZipping, zipPath, { exe7z: exe7z });
+
+    // Unzip
+    var exe7zNonExisting = 'R:\\My Custom Apps\\7-Zip\\7z.exe';
+    expect(_cb( zlib.unzipSync,
+      zipPath, null, { exe7z: exe7zNonExisting }
+    )).toThrowError();
+
+    cmd = zlib.unzipSync(zipPath, null, {
+      outputsLog: true
+    });
+    expect(cmd).toContain('"' + DEF_7Z_EXE + '" u -tzip -ssw -r-');
+    expect(cmd).toContain(' -r- "' + dirZipping + '.zip"'); // dest
+    expect(cmd).toContain('.zip" @"'); // src @TODO Check tmp list
+    expect(cmd).not.toContain(' -mx');
+    expect(cmd).not.toContain(' -p');
+    expect(cmd).not.toContain(' -w');
+    expect(cmd).not.toContain(' -xr!');
+
+    fse.removeSync(zipPath); // Clean
   });
 
   // @TODO Add more tests

@@ -48,6 +48,8 @@
     "test:name:deflateSync_options": ".\\scripts\\Test ZLIB -t deflateSync_options$",
     "test:name:deflateSync_exclude_option": ".\\scripts\\Test ZLIB -t deflateSync_exclude_option$",
     "test:name:getAdaptersConfsSWbemObjs": ".\\scripts\\Test ZLIB -t getAdaptersConfsSWbemObjs$",
+    "test:name:openZip": ".\\scripts\\Test ZLIB -t openZip$",
+    "test:name:unzipSync_dryRun": ".\\scripts\\Test ZLIB -t unzipSync_dryRun$",
     "test:ZLIB": ".\\scripts\\Test ZLIB",
     "build": "wsh-packager bundle ./Package.wsf",
     "test:dist:module": ".\\scripts\\Test dist:module",

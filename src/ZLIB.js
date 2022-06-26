@@ -43,12 +43,13 @@
 
   var DEF_DIR_7ZIP = 'C:\\Program Files\\7-Zip';
   var EXENAME_7Z = '7z.exe';
-
-  /** @constant {string} */
-  var DEF_7ZIP_EXE = path.join(DEF_DIR_7ZIP, EXENAME_7Z);
-
-  /** @constant {string} */
   var EXENAME_7ZFM = '7zFM.exe';
+
+  /** @constant {string} */
+  var DEF_7Z_EXE = path.join(DEF_DIR_7ZIP, EXENAME_7Z);
+
+  /** @constant {string} */
+  var DEF_7ZFM_EXE = path.join(DEF_DIR_7ZIP, EXENAME_7ZFM);
 
   /** @constant {string} */
   var DEF_DIR_WINRAR = 'C:\\Program Files\\WinRAR';
@@ -181,7 +182,7 @@ Usage: 7za <command> [<switches>...] <archive_name> [<file_names>...] [@listfile
    * @param {string[]|string} paths - The compressed file paths. If a directory is specified, all of them are compressed, including sub directories. If you use a wildcard to specify the paths, you can use the R option to control the files contained in the sub directories.
    * @param {string} [dest] - The filepath or directory of destination ZIP.
    * @param {object} [options] - Optional parameters.
-   * @param {string} [options.exe7zip=DEF_7ZIP_EXE] - A custom .exe path of 7-ZIP.
+   * @param {string} [options.exe7z=DEF_7ZIP_EXE] - A custom .exe path of 7-ZIP.
    * @param {boolean} [options.includesSubDir=false] - Whether include sub directories when you specified wildcard or filename to `paths`.
    * @param {boolean} [options.updateMode='sync'] - A method of overwriting an existing dest Zip file. "sync" (default) or "add"
    * @param {string} [options.dateCode] - If specify "yyyy-MM-dd" to Zipfile name is <name>_yyyy-MM-dd.zip
@@ -189,8 +190,8 @@ Usage: 7za <command> [<switches>...] <archive_name> [<file_names>...] [@listfile
    * @param {string[]|string} [options.excludePaths] - You should specify relative paths with a wildcard. Cannot establish absolute paths.
    * @param {string} [options.password] - Specifies password. File names will be not encrypted in Zip archive.
    * @param {string} [options.workingDir] - Working directory
-   * @param {boolean} [options.outputsLog=false] - Output console logs.
    * @param {boolean} [options.savesTmpList=false] - Does not remove temporary file list.
+   * @param {boolean} [options.outputsLog=false] - Output console logs.
    * @param {boolean} [options.isDryRun=false] - No execute, returns the string of command.
    * @returns {object|string} - See {@link https://docs.tuckn.net/WshChildProcess/global.html#typeRunSyncReturn|typeRunSyncReturn}. If options.isDryRun is true, returns string.
    */
@@ -204,14 +205,16 @@ Usage: 7za <command> [<switches>...] <archive_name> [<file_names>...] [@listfile
     var outputsLog = obtain(options, 'outputsLog', false);
     var isDryRun = obtain(options, 'isDryRun', false);
 
-    // Setting core arguments
+    // Setting the arguments
+    var argsStr;
+
     if (outputsLog) {
       // console.log('a: Add files to archive');
       console.log('u : Update files to archive');
       console.log('-tzip: Set ZIP type of archive');
       console.log('-ssw: Compress shared(locked) files');
     }
-    var argsStr = 'u -tzip -ssw';
+    argsStr = 'u -tzip -ssw';
 
     // Setting Recurse switch
     var includesSubDir = obtain(options, 'includesSubDir', false);
@@ -333,7 +336,7 @@ Usage: 7za <command> [<switches>...] <archive_name> [<file_names>...] [@listfile
 
     // Executing
     // Setting the .exe path
-    var exe7z = obtain(options, 'exe7zip', DEF_7ZIP_EXE);
+    var exe7z = obtain(options, 'exe7z', DEF_7Z_EXE);
     var cmd = '"' + exe7z + '" ' + argsStr;
 
     if (outputsLog) {
@@ -354,9 +357,8 @@ Usage: 7za <command> [<switches>...] <archive_name> [<file_names>...] [@listfile
       fse.removeSync(srcListFile);
     }
 
-    if (isDryRun) return rtn; // rtn is {string}
-
     if (outputsLog) console.log(insp(rtn));
+    if (isDryRun) return rtn; // rtn is {string}
 
     // Exit values
     if (rtn.error) {
@@ -365,7 +367,6 @@ Usage: 7za <command> [<switches>...] <archive_name> [<file_names>...] [@listfile
         + '  at ' + FN + ' (' + MODULE_TITLE + ')');
     }
 
-    // @TODO execSync can not receive exitCode... But execFileSync can not get stdout, now.
 
     if (includes(rtn.stdout, 'Everything is Ok')) {
       if (outputsLog) console.log('No error');
@@ -378,6 +379,7 @@ Usage: 7za <command> [<switches>...] <archive_name> [<file_names>...] [@listfile
       + '  at ' + FN + ' (' + MODULE_TITLE + ')'
     );
 
+    // @TODO execSync can not receive exitCode... But execFileSync can not get stdout, now.
     /* Exit Code Handling
     // 0: No error
     if (rtn.exitCode === 0) {
@@ -456,7 +458,7 @@ Usage: 7za <command> [<switches>...] <archive_name> [<file_names>...] [@listfile
    * @memberof Wsh.ZLIB
    * @param {string} archive - A archive filepath
    * @param {object} [options] - Optional parameters.
-   * @param {string} [options.dir7zip=DEF_DIR_7ZIP] - A custom directory path of 7-ZIP.
+   * @param {string} [options.exe7zFM=DEF_7ZFM_EXE] - A custom .exe path of 7-ZIP file manager.
    * @param {string} [options.winStyle='activeDef']
    * @returns {void}
    */
@@ -468,8 +470,7 @@ Usage: 7za <command> [<switches>...] <archive_name> [<file_names>...] [@listfile
     var filePath = path.resolve(archive);
 
     // Setting the .exe path
-    var dir7zip = obtain(options, 'dir7zip', DEF_DIR_7ZIP);
-    var exe7zFM = path.join(dir7zip, EXENAME_7ZFM);
+    var exe7zFM = obtain(options, 'exe7zFM', DEF_7ZFM_EXE);
 
     // Executing
     var winStyle = obtain(options, 'winStyle', CD.windowStyles.activeDef);
@@ -478,17 +479,19 @@ Usage: 7za <command> [<switches>...] <archive_name> [<file_names>...] [@listfile
 
   // zlib.unzipSync {{{
   /**
-   * @description Extract files from archiver with 7-Zip.
+   * Extract files from an archive with 7-Zip.
    *
    * @function unzipSync
    * @memberof Wsh.ZLIB
    * @param {string} archive - The archive file path
    * @param {string} [destDir] - The output directory path.
    * @param {object} [options] - Optional parameters.
-   * @param {string} [options.dir7zip=DEF_DIR_7ZIP] - A custom directory path of 7-ZIP.
-   * @param {string} [options.password] - -p (set password)
+   * @param {string} [options.exe7z=DEF_7ZIP_EXE] - A custom .exe path of 7-ZIP.
+   * @param {string} [options.password] - Specifies password.
+   * @param {string} [options.workingDir] - Working directory
    * @param {boolean} [options.makesDir=true] - Makes a new directory with archive file name
    * @param {boolean} [options.outputsLog=false] - Output console logs.
+   * @param {boolean} [options.isDryRun=false] - No execute, returns the string of command.
    * @returns {object} - See {@link https://docs.tuckn.net/WshChildProcess/global.html#typeRunSyncReturn|typeRunSyncReturn}.
    */
   zlib.unzipSync = function (archive, destDir, options) {
@@ -497,16 +500,28 @@ Usage: 7za <command> [<switches>...] <archive_name> [<file_names>...] [@listfile
     if (!isSolidString(archive)) throwErrNonStr(FN, archive);
 
     var outputsLog = obtain(options, 'outputsLog', false);
+    var isDryRun = obtain(options, 'isDryRun', false);
 
-    // Setting arguments
+    // Setting the arguments
+    var argsStr;
+
     if (outputsLog) console.log('x: eXtract files with full paths');
-    var args = ['x'];
+    argsStr = 'x';
 
-    // Setting the Unzip password
+    // Setting a zip password (-p{Password})
     var password = obtain(options, 'password', null);
     if (!isEmpty(password)) {
-      if (outputsLog) console.log('-p"****": Set the password');
-      args.push('-p"' + password + '"');
+      if (outputsLog) console.log('-p"****": Set the password (-mem=AES256)');
+      argsStr += ' -p"' + password + '" -mem=AES256';
+    }
+
+    // Assign the working directory (-w[{path}])
+    var workingDir = obtain(options, 'workingDir', null);
+    if (!isEmpty(workingDir)) {
+      if (outputsLog) {
+        console.log('-w"' + workingDir + '": Assign the working directory');
+      }
+      argsStr += ' -w"' + workingDir + '"';
     }
 
     var srcPath = path.resolve(archive);
@@ -521,23 +536,55 @@ Usage: 7za <command> [<switches>...] <archive_name> [<file_names>...] [@listfile
       destDir = path.join(destDir, path.parse(srcPath).name);
     }
 
-    // Creating the destination directory
-    if (!fs.existsSync(destDir)) fse.ensureDirSync(destDir);
+    if (outputsLog) console.log('-o: Set output directory. ' + destDir);
 
-    args.push(srcPath, '-o' + destDir, '-y');
+    // Creating the output directory
+    if (!fs.existsSync(destDir)) {
+      if (outputsLog) console.log('Creating the output directory');
+      if (!isDryRun) fse.ensureDirSync(destDir);
+    }
+
+    argsStr += ' "' + srcPath + '" -o"' + destDir + '" -y';
 
     // Executing
     // Setting the .exe path
-    var dir7zip = obtain(options, 'dir7zip', DEF_DIR_7ZIP);
-    var exe7z = path.join(dir7zip, EXENAME_7Z);
+    var exe7z = obtain(options, 'exe7z', DEF_7Z_EXE);
+    var cmd = '"' + exe7z + '" ' + argsStr;
 
-    if (outputsLog) console.log('7zip path: ' + exe7z);
-    if (outputsLog) console.log('arguments: ' + args.join(' '));
+    if (outputsLog) {
+      console.log('exe path: ' + exe7z);
+      console.log('arguments: ' + argsStr);
+      console.log('command: ' + cmd);
+    }
 
-    var rtn = execFileSync(exe7z, args, { winStyle: CD.windowStyles.hidden });
+    var rtn = execSync(cmd, {
+      winStyle: CD.windowStyles.hidden,
+      isDryRun: isDryRun
+    });
 
     if (outputsLog) console.log(insp(rtn));
+    if (isDryRun) return rtn; // rtn is {string}
 
+    // Exit values
+    if (rtn.error) {
+      throw new Error('Failed to output the archive\n'
+        + ' ' + rtn.stderr
+        + '  at ' + FN + ' (' + MODULE_TITLE + ')');
+    }
+
+    if (includes(rtn.stdout, 'Everything is Ok')) {
+      if (outputsLog) console.log('No error');
+      return rtn;
+    }
+
+    throw new Error(
+      'The extraction process is failed\n'
+      + ' ' + rtn.stderr
+      + '  at ' + FN + ' (' + MODULE_TITLE + ')'
+    );
+
+    // @TODO execSync can not receive exitCode... But execFileSync can not get stdout, now.
+    /* Exit Code Handling
     // Exit values
     if (rtn.error) {
       throw new Error('Failed to unzip the files\n'
@@ -597,8 +644,7 @@ Usage: 7za <command> [<switches>...] <archive_name> [<file_names>...] [@listfile
 
     if (outputsLog) console.log('UNKNOWN EXIT CODE');
     rtn.error = true;
-
-    return rtn;
+    */
   }; // }}}
 
   /**

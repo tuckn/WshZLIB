@@ -118,5 +118,6 @@ ehthumbs_vista.db
 *.ffs_db
 *.ffs_lock
 
-assets/7-Zip
+assets/bin/*
+assets/Sandbox/DestDir/deflate/*
 docs/

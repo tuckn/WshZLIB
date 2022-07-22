@@ -2,7 +2,7 @@ name: Update AWS S3 docs
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
 
 jobs:
   build:
@@ -12,7 +12,7 @@ jobs:
     # [steps] A sequence of tasks
     steps:
     - name: Checkout
-      uses: actions/checkout@master
+      uses: actions/checkout@main
 
     - name: Rebuild docs
       uses: actions/setup-node@v1

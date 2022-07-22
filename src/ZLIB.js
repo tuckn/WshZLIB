@@ -35,7 +35,6 @@
   var srrd = os.surroundCmdArg;
   var exec = child_process.exec;
   var execFileSync = child_process.execFileSync;
-  var execSync = child_process.execSync;
 
   var zlib = Wsh.ZLIB;
 
@@ -46,13 +45,22 @@
   var EXENAME_7Z = '7z.exe';
   var EXENAME_7ZFM = '7zFM.exe';
 
-  /** @constant {string} */
+  /**
+   * @name DEF_7Z_EXE
+   * @constant {string}
+   */
   var DEF_7Z_EXE = path.join(DEF_DIR_7ZIP, EXENAME_7Z);
 
-  /** @constant {string} */
+  /**
+   * @name DEF_7ZFM_EXE
+   * @constant {string}
+   */
   var DEF_7ZFM_EXE = path.join(DEF_DIR_7ZIP, EXENAME_7ZFM);
 
-  /** @constant {string} */
+  /**
+   * @name DEF_DIR_WINRAR
+   * @constant {string}
+   */
   var DEF_DIR_WINRAR = 'C:\\Program Files\\WinRAR';
 
   /** @constant {string} */
@@ -72,6 +80,7 @@
   /**
    * console logging
    *
+   * @private
    * @function _log
    * @param {boolean} sw - Shows a log
    * @param {string} text - The logging text
@@ -241,6 +250,21 @@ Usage: 7za <command> [<switches>...] <archive_name> [<file_names>...] [@listfile
 
   // zlib.deflateSync {{{
   /**
+   * @typedef {object} typeDeflateZipOption
+   * @property {string} [exe7z=DEF_7ZIP_EXE] - A custom .exe path of 7-ZIP.
+   * @property {string} [workingDir] - Working directory
+   * @property {boolean} [updateMode='sync'] - A method of overwriting an existing dest Zip file. "sync" (default) or "add"
+   * @property {boolean} [includesSubDir=false] - Whether include sub directories when you specified wildcard or filename to `paths`.
+   * @property {string[]|string} [excludingFiles] - You should specify relative paths with a wildcard. Cannot establish absolute paths.
+   * @property {number|string} [compressLv=5] Level of compression. 1,3,5,7,9 or Fastest, Fast, Normal, Maximum, Ultra
+   * @property {string} [password] - Specifies password. File names will be not encrypted in Zip archive.
+   * @property {string} [dateCode] - If specify "yyyy-MM-dd" to Zipfile name is <name>_yyyy-MM-dd.zip
+   * @property {boolean} [savesTmpList=false] - Does not remove temporary file list.
+   * @property {boolean} [outputsLog=false] - Output console logs.
+   * @property {boolean} [isDryRun=false] - No execute, returns the string of command.
+   */
+
+  /**
    * Compresses and encrypts files into ZIP with 7-Zip.
    *
    * @example
@@ -297,18 +321,7 @@ Usage: 7za <command> [<switches>...] <archive_name> [<file_names>...] [@listfile
    * @memberof Wsh.ZLIB
    * @param {string[]|string} paths - The compressed file paths. If a directory is specified, all of them are compressed, including sub directories. If you use a wildcard to specify the paths, you can use the R option to control the files contained in the sub directories.
    * @param {string} [dest] - The filepath or directory of destination ZIP.
-   * @param {object} [options] - Optional parameters.
-   * @param {string} [options.exe7z=DEF_7ZIP_EXE] - A custom .exe path of 7-ZIP.
-   * @param {string} [options.workingDir] - Working directory
-   * @param {boolean} [options.updateMode='sync'] - A method of overwriting an existing dest Zip file. "sync" (default) or "add"
-   * @param {boolean} [options.includesSubDir=false] - Whether include sub directories when you specified wildcard or filename to `paths`.
-   * @param {string[]|string} [options.excludingFiles] - You should specify relative paths with a wildcard. Cannot establish absolute paths.
-   * @param {number|string} [options.compressLv=5] Level of compression. 1,3,5,7,9 or Fastest, Fast, Normal, Maximum, Ultra
-   * @param {string} [options.password] - Specifies password. File names will be not encrypted in Zip archive.
-   * @param {string} [options.dateCode] - If specify "yyyy-MM-dd" to Zipfile name is <name>_yyyy-MM-dd.zip
-   * @param {boolean} [options.savesTmpList=false] - Does not remove temporary file list.
-   * @param {boolean} [options.outputsLog=false] - Output console logs.
-   * @param {boolean} [options.isDryRun=false] - No execute, returns the string of command.
+   * @param {typeDeflateZipOption} [options] - Optional parameters.
    * @returns {typeDeflateResult|string} - See typeDeflateResult. If options.isDryRun is true, returns string.
    */
   zlib.deflateSync = function (paths, dest, options) {
@@ -811,6 +824,35 @@ Usage:     rar <command> -<switch 1> -<switch N> <archive> <files...>
 
   // zlib.deflateSyncIntoRar {{{
   /**
+   * @typedef {object} typeDeflateRarOption
+   * @property {string} [dirWinRar=DEF_DIR_WINRAR] - A custom directory path of WinRAR.
+   * @property {boolean} [isGUI=false] - true:WinRar.exe false:Rar.exe
+   * @property {boolean} [workingDir] - Assign a working directory. RAR option: "-w<p>"
+   * @property {string} [updateMode="add"] - "add" (-u -o+), "sync" (-u -as -o+), "mirror"
+   * @property {boolean} [skipsExisting=false] - Skip existing contents
+   * @property {string[]|string} [excludingFiles] - Exclude specified file
+   * @property {boolean} [excludesUsingFiles=false] - Open shared files. RAR option: "-dh"
+   * @property {boolean} [excludesEmptyDir=false] - Do not add empty directories. RAR option: "-ed"
+   * @property {boolean} [excludesSubDirWildcard=false] - Recurse subdirectories for wildcard names only. RAR option: "-r0"
+   * @property {boolean} [expandsPathsToFull=false] - true: Expand paths to full (-ep2). false (default): Exclude base directory from names (ep1)
+   * @property {number} [compressLv=5] - Set compression level (0-store...3-default...5-maximal). RAR option: "-m<0..5>"
+   * @property {number} [cpuPriority=0] - Set processing priority (0-default,1-min..15-max) and sleep time in ms
+   * @property {number} [recoveryPer=3] - Add data recovery record
+   * @property {string} [password] - Encrypt both file data and headers. RAR option: "-hp[password]"
+   * @property {string} [dateCode] - If specify "yyyy-MM-dd" to Rar file name is <name>_yyyy-MM-dd.rar
+   * @property {boolean} [excludesADS=false] - Do not save NTFS streams. (ADS: NTFS Alternate Data Stream. RAR option: "-os"
+   * @property {boolean} [containsSecArea=false] - Save or restore file owner and group. RAR option: "-ow"
+   * @property {boolean} [isSolidArchive=true] - Create solid archive
+   * @property {boolean} [assumesYes=true] - Assume Yes on all queries
+   * @property {boolean} [sendAllMesToStdErr=false] - Send all messages to stderr. RAR option: "-ierr"
+   * @property {number} [rarVersion=5] - Specify a version of archiving format. RAR option: "-ma5"
+   * @property {boolean} [isSymlinkAsLink=false] - Process symbolic links as the link(RAR 4.x以上、Linuxのみ？) RAR option: "-ol"
+   * @property {boolean} [savesTmpList=false] - Does not remove temporary file list.
+   * @property {boolean} [outputsLog=false] - Output console logs.
+   * @property {boolean} [isDryRun=false] - No execute, returns the string of command.
+   */
+
+  /**
    * Compresses and encrypts files into RAR.
    *
    * @example
@@ -862,32 +904,7 @@ Usage:     rar <command> -<switch 1> -<switch N> <archive> <files...>
    * @memberof Wsh.ZLIB
    * @param {string[]|string} paths - The compressed file paths. If a directory is specified, all of them are compressed, including sub directories. If you use a wildcard to specify the paths, you can use the R option to control the files contained in the sub directories.
    * @param {string} [dest] - The filepath or directory of destination ZIP.
-   * @param {object} [options] - Optional parameters.
-   * @param {string} [options.dirWinRar=DEF_DIR_WINRAR] - A custom directory path of WinRAR.
-   * @param {boolean} [options.isGUI=false] - true:WinRar.exe false:Rar.exe
-   * @param {boolean} [options.workingDir] - Assign a working directory. RAR option: "-w<p>"
-   * @param {string} [options.updateMode="add"] - "add" (-u -o+), "sync" (-u -as -o+), "mirror"
-   * @param {boolean} [options.skipsExisting=false] - Skip existing contents
-   * @param {string[]|string} [options.excludingFiles] - Exclude specified file
-   * @param {boolean} [options.excludesUsingFiles=false] - Open shared files. RAR option: "-dh"
-   * @param {boolean} [options.excludesEmptyDir=false] - Do not add empty directories. RAR option: "-ed"
-   * @param {boolean} [options.excludesSubDirWildcard=false] - Recurse subdirectories for wildcard names only. RAR option: "-r0"
-   * @param {boolean} [options.expandsPathsToFull=false] - true: Expand paths to full (-ep2). false (default): Exclude base directory from names (ep1)
-   * @param {number} [options.compressLv=5] - Set compression level (0-store...3-default...5-maximal). RAR option: "-m<0..5>"
-   * @param {number} [options.cpuPriority=0] - Set processing priority (0-default,1-min..15-max) and sleep time in ms
-   * @param {number} [options.recoveryPer=3] - Add data recovery record
-   * @param {string} [options.password] - Encrypt both file data and headers. RAR option: "-hp[password]"
-   * @param {string} [options.dateCode] - If specify "yyyy-MM-dd" to Rarfile name is <name>_yyyy-MM-dd.rar
-   * @param {boolean} [options.excludesADS=false] - Do not save NTFS streams. (ADS: NTFS Alternate Data Stream. RAR option: "-os"
-   * @param {boolean} [options.containsSecArea=false] - Save or restore file owner and group. RAR option: "-ow"
-   * @param {boolean} [options.isSolidArchive=true] - Create solid archive
-   * @param {boolean} [options.assumesYes=true] - Assume Yes on all queries
-   * @param {boolean} [options.sendAllMesToStdErr=false] - Send all messages to stderr. RAR option: "-ierr"
-   * @param {number} [options.rarVersion=5] - Specify a version of archiving format. RAR option: "-ma5"
-   * @param {boolean} [options.isSymlinkAsLink=false] - Process symbolic links as the link(RAR 4.x以上、Linuxのみ？) RAR option: "-ol"
-   * @param {boolean} [options.savesTmpList=false] - Does not remove temporary file list.
-   * @param {boolean} [options.outputsLog=false] - Output console logs.
-   * @param {boolean} [options.isDryRun=false] - No execute, returns the string of command.
+   * @param {typeDeflateRarOption} [options] - Optional parameters.
    * @returns {typeDeflateResult|string} - @see typeDeflateResult. If options.isDryRun is true, returns string.
    */
   zlib.deflateSyncIntoRar = function (paths, dest, options) {

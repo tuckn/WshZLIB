@@ -23,6 +23,7 @@
 
   var objAdd = Object.assign;
   var obtain = util.obtainPropVal;
+  var includes = util.includes;
   var isEmpty = util.isEmpty;
   var isTrueLike = util.isTrueLike;
   var isSolidArray = util.isSolidArray;
@@ -257,7 +258,7 @@ Usage: 7za <command> [<switches>...] <archive_name> [<file_names>...] [@listfile
    * @property {boolean} [includesSubDir=false] - Whether include sub directories when you specified wildcard or filename to `paths`.
    * @property {string[]|string} [excludingFiles] - You should specify relative paths with a wildcard. Cannot establish absolute paths.
    * @property {number|string} [compressLv=5] Level of compression. 1,3,5,7,9 or Fastest, Fast, Normal, Maximum, Ultra
-   * @property {string} [password] - Specifies password. File names will be not encrypted in Zip archive.
+   * @property {string} [password] - Specifies password. File names will not be encrypted in Zip archive.
    * @property {string} [dateCode] - If specify "yyyy-MM-dd" to Zipfile name is <name>_yyyy-MM-dd.zip
    * @property {boolean} [savesTmpList=false] - Does not remove temporary file list.
    * @property {boolean} [outputsLog=false] - Output console logs.
@@ -447,7 +448,7 @@ Usage: 7za <command> [<switches>...] <archive_name> [<file_names>...] [@listfile
     _log(outputsLog, 'options: ' + insp(op));
 
     var rtn = execFileSync(exe7z, args, op);
-    rtn.archivedPath = destZip;
+    rtn.archivedPath = destZip; // provisional
 
     // Remove lists
     var savesTmpList = obtain(options, 'savesTmpList', false);
@@ -458,6 +459,11 @@ Usage: 7za <command> [<switches>...] <archive_name> [<file_names>...] [@listfile
 
     _log(outputsLog, insp(rtn));
     if (isDryRun) return rtn; // rtn is {string}
+
+    // Setting the true archived file path
+    if (rtn.stdout && includes(rtn.stdout, 'Creating archive: ')) {
+      rtn.archivedPath = rtn.stdout.match(/Creating archive: (.+)\r\n/)[1];
+    }
 
     // Exit Code Handling
     // 0: No error
@@ -1168,13 +1174,18 @@ Usage:     rar <command> -<switch 1> -<switch N> <archive> <files...>
     _log(outputsLog, 'options: ' + insp(op));
 
     var rtn = execFileSync(exeRar, args, op);
-    rtn.archivedPath = destRar;
+    rtn.archivedPath = destRar; // provisional
 
     // Remove lists
     var savesTmpList = obtain(options, 'savesTmpList', false);
     if (!savesTmpList) {
       if (excludeListFile) fse.removeSync(excludeListFile);
       fse.removeSync(srcListFile);
+    }
+
+    // Setting the true archived file path
+    if (rtn.stdout && includes(rtn.stdout, 'Creating solid archive ')) {
+      rtn.archivedPath = rtn.stdout.match(/Creating solid archive (.+)\r\n/)[1];
     }
 
     _log(outputsLog, insp(rtn));

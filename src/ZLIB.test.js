@@ -308,17 +308,19 @@ describe('ZLIB', function () {
     // }}}
   });
 
-  testName = 'deflateSync_src_dest';
+  testName = 'deflateSync_toThrowError';
   test(testName, function () {
-    var destPath, rtn;
-
     var dirNonExisting = 'B:\\My Data Folder\\deflated';
     expect(_cb(zlib.deflateSync, dirNonExisting, null, {
       exe7z: exe7z
     })).toThrowError();
+  });
 
-    // source: directory {{{
-    // source: directory, dest: null
+  testName = 'deflateSync_directory_src';
+  test(testName, function () {
+    var destPath, rtn;
+
+    // source: directory -> dest: null
     destPath = dirArchiving + '.zip';
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
@@ -327,11 +329,11 @@ describe('ZLIB', function () {
     expect(rtn.error).toBe(false);
     expect(isEmpty(rtn.stderr)).toBe(true);
     expect(rtn.archivedPath).toBe(destPath);
-    expect(fs.existsSync(destPath)).toBe(true);
+    expect(fs.existsSync(rtn.archivedPath)).toBe(true);
 
     fse.removeSync(destPath); // Clean
 
-    // source: directory, dest: directory (existing)
+    // source: directory -> dest: directory (existing)
     destPath = path.join(dirDestDeflate, path.basename(dirArchiving) + '.zip');
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
@@ -340,11 +342,11 @@ describe('ZLIB', function () {
     expect(rtn.error).toBe(false);
     expect(isEmpty(rtn.stderr)).toBe(true);
     expect(rtn.archivedPath).toBe(destPath);
-    expect(fs.existsSync(destPath)).toBe(true);
+    expect(fs.existsSync(rtn.archivedPath)).toBe(true);
 
     fse.removeSync(destPath); // Clean
 
-    // source: directory, dest: Zip file path (Non existing)
+    // source: directory -> dest: Zip file path (Non existing)
     destPath = path.join(dirDestDeflate, 'My New Archive.zip');
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
@@ -353,25 +355,32 @@ describe('ZLIB', function () {
     expect(rtn.error).toBe(false);
     expect(isEmpty(rtn.stderr)).toBe(true);
     expect(rtn.archivedPath).toBe(destPath);
-    expect(fs.existsSync(destPath)).toBe(true);
+    expect(fs.existsSync(rtn.archivedPath)).toBe(true);
 
     fse.removeSync(destPath); // Clean
-    // }}}
+  });
 
-    // source: any files {{{
-    // source: any files, dest: null
-    destPath = path.join(path.dirname(files1[0]), path.basename(files1[0]) + '.zip');
+  testName = 'deflateSync_files_src';
+  test(testName, function () {
+    var destPath, rtn;
+
+    // source: any files -> dest: null
+    destPath = path.join(
+      path.dirname(files1[0]),
+      path.basename(files1[0]) + '.zip'
+    );
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
 
     rtn = zlib.deflateSync(files1, null, { exe7z: exe7z });
     expect(rtn.error).toBe(false);
     expect(isEmpty(rtn.stderr)).toBe(true);
-    expect(fs.existsSync(destPath)).toBe(true);
+    expect(rtn.archivedPath).toBe(destPath);
+    expect(fs.existsSync(rtn.archivedPath)).toBe(true);
 
     fse.removeSync(destPath); // Clean
 
-    // source: any files, dest: directory (existing)
+    // source: any files -> dest: directory (existing)
     destPath = path.join(dirDest, path.basename(files1[0]) + '.zip');
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
@@ -379,11 +388,12 @@ describe('ZLIB', function () {
     rtn = zlib.deflateSync(files1, dirDest, { exe7z: exe7z });
     expect(rtn.error).toBe(false);
     expect(isEmpty(rtn.stderr)).toBe(true);
-    expect(fs.existsSync(destPath)).toBe(true);
+    expect(rtn.archivedPath).toBe(destPath);
+    expect(fs.existsSync(rtn.archivedPath)).toBe(true);
 
     fse.removeSync(destPath); // Clean
 
-    // source: any files, dest: Zip file path (Non existing)
+    // source: any files -> dest: Zip file path (Non existing)
     destPath = path.join(dirDest, 'My New Archive.zip');
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
@@ -391,13 +401,17 @@ describe('ZLIB', function () {
     rtn = zlib.deflateSync(files1, destPath, { exe7z: exe7z });
     expect(rtn.error).toBe(false);
     expect(isEmpty(rtn.stderr)).toBe(true);
-    expect(fs.existsSync(destPath)).toBe(true);
+    expect(rtn.archivedPath).toBe(destPath);
+    expect(fs.existsSync(rtn.archivedPath)).toBe(true);
 
     fse.removeSync(destPath); // Clean
-    // }}}
+  });
 
-    // source: wildcard (*) path {{{
-    // source: wildcard (*) path, dest: null
+  testName = 'deflateSync_src_withWildcard';
+  test(testName, function () {
+    var destPath, rtn;
+
+    // source: wildcard (*) path -> dest: null
     destPath = dirArchiving + '.zip';
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
@@ -409,11 +423,12 @@ describe('ZLIB', function () {
     });
     expect(rtn.error).toBe(false);
     expect(isEmpty(rtn.stderr)).toBe(true);
-    expect(fs.existsSync(destPath)).toBe(true);
+    expect(rtn.archivedPath).toBe(destPath);
+    expect(fs.existsSync(rtn.archivedPath)).toBe(true);
 
     fse.removeSync(destPath); // Clean
 
-    // source: wildcard path, dest: directory (existing)
+    // source: wildcard path -> dest: directory (existing)
     destPath = path.join(dirDest, 'xxx.zip');
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
@@ -423,11 +438,12 @@ describe('ZLIB', function () {
     });
     expect(rtn.error).toBe(false);
     expect(isEmpty(rtn.stderr)).toBe(true);
-    expect(fs.existsSync(destPath)).toBe(true);
+    expect(rtn.archivedPath).toBe(destPath);
+    expect(fs.existsSync(rtn.archivedPath)).toBe(true);
 
     fse.removeSync(destPath); // Clean
 
-    // source: wildcard path, dest: Zip file path (Non existing)
+    // source: wildcard path -> dest: Zip file path (Non existing)
     destPath = path.join(dirDest, 'My New Archive.zip');
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
@@ -437,13 +453,12 @@ describe('ZLIB', function () {
     });
     expect(rtn.error).toBe(false);
     expect(isEmpty(rtn.stderr)).toBe(true);
-    expect(fs.existsSync(destPath)).toBe(true);
+    expect(rtn.archivedPath).toBe(destPath);
+    expect(fs.existsSync(rtn.archivedPath)).toBe(true);
 
     fse.removeSync(destPath); // Clean
-    // }}}
 
-    // source: wildcard (*.txt) path {{{
-    // source: wildcard (*.txt) path, dest: null
+    // source: wildcard (*.txt) path -> dest: null
     destPath = path.join(dirArchiving, 'xxx.txt.zip');
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
@@ -455,11 +470,12 @@ describe('ZLIB', function () {
     });
     expect(rtn.error).toBe(false);
     expect(isEmpty(rtn.stderr)).toBe(true);
-    expect(fs.existsSync(destPath)).toBe(true);
+    expect(rtn.archivedPath).toBe(destPath);
+    expect(fs.existsSync(rtn.archivedPath)).toBe(true);
 
     fse.removeSync(destPath); // Clean
 
-    // source: wildcard (*.txt) path, dest: directory (existing)
+    // source: wildcard (*.txt) path -> dest: directory (existing)
     destPath = path.join(dirDest, 'xxx.txt.zip');
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
@@ -470,11 +486,12 @@ describe('ZLIB', function () {
     });
     expect(rtn.error).toBe(false);
     expect(isEmpty(rtn.stderr)).toBe(true);
-    expect(fs.existsSync(destPath)).toBe(true);
+    expect(rtn.archivedPath).toBe(destPath);
+    expect(fs.existsSync(rtn.archivedPath)).toBe(true);
 
     fse.removeSync(destPath); // Clean
 
-    // source: wildcard (*.txt) path, dest: Zip file path (Non existing)
+    // source: wildcard (*.txt) path -> dest: Zip file path (Non existing)
     destPath = path.join(dirDest, 'My New Archive.zip');
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
@@ -484,10 +501,28 @@ describe('ZLIB', function () {
     });
     expect(rtn.error).toBe(false);
     expect(isEmpty(rtn.stderr)).toBe(true);
-    expect(fs.existsSync(destPath)).toBe(true);
+    expect(rtn.archivedPath).toBe(destPath);
+    expect(fs.existsSync(rtn.archivedPath)).toBe(true);
 
     fse.removeSync(destPath); // Clean
-    // }}}
+  });
+
+  testName = 'deflateSync_dest_nonExtension';
+  test(testName, function () {
+    var destPath, rtn;
+
+    // source: any files, dest: Name + Non extension
+    destPath = path.join(dirDest, 'My New Archive');
+    fse.removeSync(destPath + '.zip');
+    expect(fs.existsSync(destPath + '.zip')).toBe(false);
+
+    rtn = zlib.deflateSync(files1, destPath, { exe7z: exe7z });
+    expect(rtn.error).toBe(false);
+    expect(isEmpty(rtn.stderr)).toBe(true);
+    expect(rtn.archivedPath).toBe(destPath + '.zip');
+    expect(fs.existsSync(rtn.archivedPath)).toBe(true);
+
+    fse.removeSync(destPath); // Clean
   });
 
   testName = 'deflateSync_custom7z';
@@ -1148,17 +1183,19 @@ describe('ZLIB', function () {
     expect(cmd).not.toContain(' -r0 ');
   });
 
-  testName = 'deflateSyncIntoRar_src_dest';
+  testName = 'deflateSyncIntoRar_toThrowError';
   test(testName, function () {
-    var destPath, rtn;
-
     var dirNonExisting = 'B:\\My Data Folder\\deflated';
     expect(_cb(zlib.deflateSyncIntoRar, dirNonExisting, null, {
       dirWinRar: dirWinRar
     })).toThrowError();
+  });
 
-    // source: directory {{{
-    // source: directory, dest: null
+  testName = 'deflateSyncIntoRar_directory_src';
+  test(testName, function () {
+    var destPath, rtn;
+
+    // source: directory -> dest: null
     destPath = dirArchiving + '.rar';
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
@@ -1169,11 +1206,11 @@ describe('ZLIB', function () {
     expect(rtn.error).toBe(false);
     expect(isEmpty(rtn.stderr)).toBe(true);
     expect(rtn.archivedPath).toBe(destPath);
-    expect(fs.existsSync(destPath)).toBe(true);
+    expect(fs.existsSync(rtn.archivedPath)).toBe(true);
 
     fse.removeSync(destPath); // Clean
 
-    // source: directory, dest: directory (existing)
+    // source: directory -> dest: directory (existing)
     destPath = path.join(dirDestDeflate, path.basename(dirArchiving) + '.rar');
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
@@ -1184,11 +1221,11 @@ describe('ZLIB', function () {
     expect(rtn.error).toBe(false);
     expect(isEmpty(rtn.stderr)).toBe(true);
     expect(rtn.archivedPath).toBe(destPath);
-    expect(fs.existsSync(destPath)).toBe(true);
+    expect(fs.existsSync(rtn.archivedPath)).toBe(true);
 
     fse.removeSync(destPath); // Clean
 
-    // source: directory, dest: rar file path (Non existing)
+    // source: directory -> dest: rar file path (Non existing)
     destPath = path.join(dirDestDeflate, 'My New Archive.rar');
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
@@ -1199,13 +1236,16 @@ describe('ZLIB', function () {
     expect(rtn.error).toBe(false);
     expect(isEmpty(rtn.stderr)).toBe(true);
     expect(rtn.archivedPath).toBe(destPath);
-    expect(fs.existsSync(destPath)).toBe(true);
+    expect(fs.existsSync(rtn.archivedPath)).toBe(true);
 
     fse.removeSync(destPath); // Clean
-    // }}}
+  });
 
-    // source: any files {{{
-    // source: any files, dest: null
+  testName = 'deflateSyncIntoRar_files_src';
+  test(testName, function () {
+    var destPath, rtn;
+
+    // source: any files -> dest: null
     destPath = path.join(
       path.dirname(files1[0]),
       path.basename(files1[0]) + '.rar'
@@ -1218,6 +1258,7 @@ describe('ZLIB', function () {
     });
     expect(rtn.error).toBe(false);
     expect(isEmpty(rtn.stderr)).toBe(true);
+    expect(rtn.archivedPath).toBe(destPath);
     expect(fs.existsSync(destPath)).toBe(true);
 
     fse.removeSync(destPath); // Clean
@@ -1230,6 +1271,7 @@ describe('ZLIB', function () {
     rtn = zlib.deflateSyncIntoRar(files1, dirDest, { dirWinRar: dirWinRar });
     expect(rtn.error).toBe(false);
     expect(isEmpty(rtn.stderr)).toBe(true);
+    expect(rtn.archivedPath).toBe(destPath);
     expect(fs.existsSync(destPath)).toBe(true);
 
     fse.removeSync(destPath); // Clean
@@ -1244,13 +1286,17 @@ describe('ZLIB', function () {
     });
     expect(rtn.error).toBe(false);
     expect(isEmpty(rtn.stderr)).toBe(true);
+    expect(rtn.archivedPath).toBe(destPath);
     expect(fs.existsSync(destPath)).toBe(true);
 
     fse.removeSync(destPath); // Clean
-    // }}}
+  });
 
-    // source: wildcard (*) path {{{
-    // source: wildcard (*) path, dest: null
+  testName = 'deflateSyncIntoRar_src_withWildcard';
+  test(testName, function () {
+    var destPath, rtn;
+
+    // source: wildcard (*) path -> dest: null
     destPath = dirArchiving + '.rar';
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
@@ -1262,11 +1308,12 @@ describe('ZLIB', function () {
     });
     expect(rtn.error).toBe(false);
     expect(isEmpty(rtn.stderr)).toBe(true);
+    expect(rtn.archivedPath).toBe(destPath);
     expect(fs.existsSync(destPath)).toBe(true);
 
     fse.removeSync(destPath); // Clean
 
-    // source: wildcard path, dest: directory (existing)
+    // source: wildcard path -> dest: directory (existing)
     destPath = path.join(dirDest, 'xxx.rar');
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
@@ -1276,11 +1323,12 @@ describe('ZLIB', function () {
     });
     expect(rtn.error).toBe(false);
     expect(isEmpty(rtn.stderr)).toBe(true);
+    expect(rtn.archivedPath).toBe(destPath);
     expect(fs.existsSync(destPath)).toBe(true);
 
     fse.removeSync(destPath); // Clean
 
-    // source: wildcard path, dest: rar file path (Non existing)
+    // source: wildcard path -> dest: rar file path (Non existing)
     destPath = path.join(dirDest, 'My New Archive.rar');
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
@@ -1290,13 +1338,12 @@ describe('ZLIB', function () {
     });
     expect(rtn.error).toBe(false);
     expect(isEmpty(rtn.stderr)).toBe(true);
+    expect(rtn.archivedPath).toBe(destPath);
     expect(fs.existsSync(destPath)).toBe(true);
 
     fse.removeSync(destPath); // Clean
-    // }}}
 
-    // source: wildcard (*.txt) path {{{
-    // source: wildcard (*.txt) path, dest: null
+    // source: wildcard (*.txt) path -> dest: null
     destPath = path.join(dirArchiving, 'xxx.txt.rar');
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
@@ -1308,11 +1355,12 @@ describe('ZLIB', function () {
     });
     expect(rtn.error).toBe(false);
     expect(isEmpty(rtn.stderr)).toBe(true);
+    expect(rtn.archivedPath).toBe(destPath);
     expect(fs.existsSync(destPath)).toBe(true);
 
     fse.removeSync(destPath); // Clean
 
-    // source: wildcard (*.txt) path, dest: directory (existing)
+    // source: wildcard (*.txt) path -> dest: directory (existing)
     destPath = path.join(dirDest, 'xxx.txt.rar');
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
@@ -1323,11 +1371,12 @@ describe('ZLIB', function () {
     });
     expect(rtn.error).toBe(false);
     expect(isEmpty(rtn.stderr)).toBe(true);
+    expect(rtn.archivedPath).toBe(destPath);
     expect(fs.existsSync(destPath)).toBe(true);
 
     fse.removeSync(destPath); // Clean
 
-    // source: wildcard (*.txt) path, dest: rar file path (Non existing)
+    // source: wildcard (*.txt) path -> dest: rar file path (Non existing)
     destPath = path.join(dirDest, 'My New Archive.rar');
     fse.removeSync(destPath);
     expect(fs.existsSync(destPath)).toBe(false);
@@ -1337,10 +1386,31 @@ describe('ZLIB', function () {
     });
     expect(rtn.error).toBe(false);
     expect(isEmpty(rtn.stderr)).toBe(true);
+    expect(rtn.archivedPath).toBe(destPath);
     expect(fs.existsSync(destPath)).toBe(true);
 
     fse.removeSync(destPath); // Clean
     // }}}
+  });
+
+  testName = 'deflateSyncIntoRar_dest_nonExtension';
+  test(testName, function () {
+    var destPath, rtn;
+
+    // source: any files, dest: Name + Non extension
+    destPath = path.join(dirDest, 'My New Archive');
+    fse.removeSync(destPath + '.rar');
+    expect(fs.existsSync(destPath + '.rar')).toBe(false);
+
+    rtn = zlib.deflateSyncIntoRar(files1, destPath, {
+      dirWinRar: dirWinRar
+    });
+    expect(rtn.error).toBe(false);
+    expect(isEmpty(rtn.stderr)).toBe(true);
+    expect(rtn.archivedPath).toBe(destPath + '.rar');
+    expect(fs.existsSync(rtn.archivedPath)).toBe(true);
+
+    fse.removeSync(destPath); // Clean
   });
 
   testName = 'deflateSyncIntoRar_customRar';

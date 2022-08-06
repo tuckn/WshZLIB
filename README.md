@@ -99,7 +99,7 @@ var rtn = zlib.deflateSync('C:\\My Data', 'D:\\Backup.zip', {
 
 console.dir(rtn);
 // Outputs:
-// { command: "C:\My script\bin\7-Zip\7z.exe" u -tzip -ssw -r- "D:\\Backup.zip" @"C:\Users\<Your Name>\AppData\Local\Temp\fs-writeTmpFileSync_rad3CD32.tmp"",
+// { command: "C:\My script\bin\7-Zip\7z.exe" u -tzip -ssw -r0 "D:\\Backup.zip" @"C:\Users\<Your Name>\AppData\Local\Temp\fs-writeTmpFileSync_rad3CD32.tmp"",
 //   exitCode: 0,
 //   stdout: "
 // 7-Zip 22.00 (x64) : Copyright (c) 1999-2022 Igor Pavlov : 2022-06-15
@@ -117,13 +117,13 @@ var rtn = zlib.deflateSync('C:\\My Data\\*.txt', 'D:\\Backup.zip', {
   compressLv: 9,
   password: 'This is mY&p@ss ^_<',
   excludingFiles: ['*SJIS*'],
-  includesSubDir: true,
+  includesSubDir: false,
   exe7z: exe7z
 });
 
 console.dir(rtn);
 // Outputs:
-// { command: "C:\My script\bin\7-Zip\7z.exe" u -tzip -ssw -r -xr@"C:\Users\<Your Name>\AppData\Local\Temp\fs-writeTmpFileSync_radD1C8B.tmp" -mx9 -p"This is mY&p@ss ^_<" -mem=AES256 "D:\\Backup_20220722-100513.zip" @"C:\Users\<Your Name>\AppData\Local\Temp\fs-writeTmpFileSync_radA1BD8.tmp"",
+// { command: "C:\My script\bin\7-Zip\7z.exe" u -tzip -ssw -r- -xr-@"C:\Users\<Your Name>\AppData\Local\Temp\fs-writeTmpFileSync_radD1C8B.tmp" -mx9 -p"This is mY&p@ss ^_<" -mem=AES256 "D:\\Backup_20220722-100513.zip" @"C:\Users\<Your Name>\AppData\Local\Temp\fs-writeTmpFileSync_radA1BD8.tmp"",
 //   exitCode: 0,
 //   stdout: "
 // 7-Zip 22.00 (x64) : Copyright (c) 1999-2022 Igor Pavlov : 2022-06-15

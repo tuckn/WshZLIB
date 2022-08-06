@@ -255,7 +255,7 @@ Usage: 7za <command> [<switches>...] <archive_name> [<file_names>...] [@listfile
    * @property {string} [exe7z=DEF_7ZIP_EXE] - A custom .exe path of 7-ZIP.
    * @property {string} [workingDir] - Working directory
    * @property {boolean} [updateMode='sync'] - A method of overwriting an existing dest Zip file. "sync" (default) or "add"
-   * @property {boolean} [includesSubDir=false] - Whether include sub directories when you specified wildcard or filename to `paths`.
+   * @property {boolean} [includesSubDir] - How to interpret the specified path (src, dest, excludingFiles). default: recurse subdirectories only when using wildcard. true: recurse subdirectories. false: disable recurse subdirectories.
    * @property {string[]|string} [excludingFiles] - You should specify relative paths with a wildcard. Cannot establish absolute paths.
    * @property {number|string} [compressLv=5] Level of compression. 1,3,5,7,9 or Fastest, Fast, Normal, Maximum, Ultra
    * @property {string} [password] - Specifies password. File names will not be encrypted in Zip archive.
@@ -281,7 +281,7 @@ Usage: 7za <command> [<switches>...] <archive_name> [<file_names>...] [@listfile
    *
    * console.dir(rtn);
    * // Outputs:
-   * // { command: "C:\My script\bin\7-Zip\7z.exe" u -tzip -ssw -r- "D:\\Backup.zip" @"C:\Users\<Your Name>\AppData\Local\Temp\fs-writeTmpFileSync_rad3CD32.tmp"",
+   * // { command: "C:\My script\bin\7-Zip\7z.exe" u -tzip -ssw -r0 "D:\\Backup.zip" @"C:\Users\<Your Name>\AppData\Local\Temp\fs-writeTmpFileSync_rad3CD32.tmp"",
    * //   exitCode: 0,
    * //   stdout: "
    * // 7-Zip 22.00 (x64) : Copyright (c) 1999-2022 Igor Pavlov : 2022-06-15
@@ -299,13 +299,13 @@ Usage: 7za <command> [<switches>...] <archive_name> [<file_names>...] [@listfile
    *   compressLv: 9,
    *   password: 'This is mY&p@ss ^_<',
    *   excludingFiles: ['*SJIS*'],
-   *   includesSubDir: true,
+   *   includesSubDir: false,
    *   exe7z: exe7z
    * });
    *
    * console.dir(rtn);
    * // Outputs:
-   * // { command: "C:\My script\bin\7-Zip\7z.exe" u -tzip -ssw -r -xr@"C:\Users\<Your Name>\AppData\Local\Temp\fs-writeTmpFileSync_radD1C8B.tmp" -mx9 -p"This is mY&p@ss ^_<" -mem=AES256 "D:\\Backup_20220722-100513.zip" @"C:\Users\<Your Name>\AppData\Local\Temp\fs-writeTmpFileSync_radA1BD8.tmp"",
+   * // { command: "C:\My script\bin\7-Zip\7z.exe" u -tzip -ssw -r- -xr-@"C:\Users\<Your Name>\AppData\Local\Temp\fs-writeTmpFileSync_radD1C8B.tmp" -mx9 -p"This is mY&p@ss ^_<" -mem=AES256 "D:\\Backup_20220722-100513.zip" @"C:\Users\<Your Name>\AppData\Local\Temp\fs-writeTmpFileSync_radA1BD8.tmp"",
    * //   exitCode: 0,
    * //   stdout: "
    * // 7-Zip 22.00 (x64) : Copyright (c) 1999-2022 Igor Pavlov : 2022-06-15
@@ -342,6 +342,10 @@ Usage: 7za <command> [<switches>...] <archive_name> [<file_names>...] [@listfile
     _log(outputsLog, 'u : Update files to archive');
     _log(outputsLog, '-tzip: Set ZIP type of archive');
     _log(outputsLog, '-ssw: Compress shared(locked) files');
+    // _log(outputsLog, '-snh : store hard links as links');
+    // _log(outputsLog, '-snl : store symbolic links as links');
+
+    // args.push('u', '-tzip', '-ssw', '-snh', '-snl');
     args.push('u', '-tzip', '-ssw');
 
     // Assign the working directory (-w[{path}])
@@ -359,17 +363,35 @@ Usage: 7za <command> [<switches>...] <archive_name> [<file_names>...] [@listfile
       }
     }
 
-    // Setting Recurse switch
-    var includesSubDir = obtain(options, 'includesSubDir', false);
+    /*
+     * Setting Recurse switch
+     * -r 	Enable recurse subdirectories.
+     *   ex: "C:\hoge\foo.exe" -> Targets all foo.exe in all sub folders.
+     * -r- 	Disable recurse subdirectories. This option is default for all commands.
+     *   ex1: "C:\hoge\foo.exe" -> Targets only "C:\hoge\foo.exe"
+     *   ex2: "C:\hoge\*foo.exe" -> Targets only "C:\hoge\foo.exe"
+     * -r0 	Enable recurse subdirectories only for wildcard names.
+     *   ex1: "C:\hoge\*foo.exe" -> Targets all foo.exe in all sub subdirectories.
+     *   ex2: "C:\hoge\*\foo.exe" -> Targets foo.exe in subdirectories. Exclude "C:\hoge\foo.exe" and files in sub-sub-directories ex. "C:\hoge\AAA\BBB\foo.exe".
+     */
+    var includesSubDir = obtain(options, 'includesSubDir', null);
     var rc = '';
 
-    if (includesSubDir) {
-      _log(outputsLog, '-r: Include subdirectories (When specified wildcard or filename)');
+    if (includesSubDir === true) {
+      _log(outputsLog, '-r: Enable recurse subdirectories.');
       args.push('-r');
       rc = 'r';
-    } else {
-      _log(outputsLog, '-r-: Not include subdirectories (When specified wildcard or filename)');
+    } else if (includesSubDir === false) {
+      _log(outputsLog, '-r: Disable recurse subdirectories.');
       args.push('-r-');
+      rc = 'r-';
+    } else {
+      _log(
+        outputsLog,
+        '-r0: Enable recurse subdirectories only for wildcard names.'
+      );
+      args.push('-r0');
+      rc = 'r0';
     }
 
     // Setting excluding filepaths (-x)
@@ -961,7 +983,7 @@ Usage:     rar <command> -<switch 1> -<switch N> <archive> <files...>
 
     /**
      * Recurse subdirectories. "-r", "-r0"
-     * -r and "C:\hoge\foo.exe" -> Targets all foo.exe in all sub folder.
+     * -r and "C:\hoge\foo.exe" -> Targets all foo.exe in all sub folders.
      * -r0 and "C:\hoge\foo.exe" -> Targets only "C:\hoge\foo.exe"
      * -r0 and "C:\hoge\*\foo.exe" -> Targets all foo.exe in all sub folder.
      */

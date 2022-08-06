@@ -1,7 +1,7 @@
 {
   "name": "@tuckn/ZLIB",
   "description": "This module provides helper WSH (Windows Script Host) functions that handle archiver apps (7-Zip and RAR). Usage: [WshZLIB](https://github.com/tuckn/WshZLIB)",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "author": "Tuckn <tuckn333@gmail.com>",
   "funding": {
     "type": "github",

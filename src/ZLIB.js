@@ -593,7 +593,7 @@ Usage: 7za <command> [<switches>...] <archive_name> [<file_names>...] [@listfile
    * @param {boolean} [options.makesArchiveNameDir=false] - Makes a new directory with archive file name
    * @param {boolean} [options.outputsLog=false] - Output console logs.
    * @param {boolean} [options.isDryRun=false] - No execute, returns the string of command.
-   * @returns {object} - See {@link https://docs.tuckn.net/WshChildProcess/global.html#typeRunSyncReturn|typeRunSyncReturn}.
+   * @returns {object} - See {@link https://tuckn.net/docs/WshChildProcess/global.html#typeRunSyncReturn|typeRunSyncReturn}.
    */
   zlib.unzipSync = function (archive, destDir, options) {
     var FN = 'zlib.unzipSync';
@@ -1345,7 +1345,7 @@ Usage:     rar <command> -<switch 1> -<switch N> <archive> <files...>
    * @param {string} [options.dirWinRar=DEF_DIR_WINRAR] - A custom directory path of WinRAR.
    * @param {boolean} [options.isGUI=false] - true:WinRar.exe false:Rar.exe
    * @param {boolean} [options.outputsLog=false] - Output console logs.
-   * @returns {object|string} - See {@link https://docs.tuckn.net/WshChildProcess/global.html#typeRunSyncReturn|typeRunSyncReturn}. If options.isDryRun is true, returns string.
+   * @returns {object|string} - See {@link https://tuckn.net/docs/WshChildProcess/global.html#typeRunSyncReturn|typeRunSyncReturn}. If options.isDryRun is true, returns string.
    */
   zlib.testRarSync = function (archive, options) {
     var FN = 'zlib.testRarSync';
@@ -1573,7 +1573,7 @@ Usage:     rar <command> -<switch 1> -<switch N> <archive> <files...>
    * @param {boolean} [options.makesArchiveNameDir=false] Make a new directory with archive file name
    * @param {boolean} [options.outputsLog=false] - Output console logs.
    * @param {boolean} [options.isDryRun=false] - No execute, returns the string of command.
-   * @returns {object} - See {@link https://docs.tuckn.net/WshChildProcess/global.html#typeRunSyncReturn|typeRunSyncReturn}.
+   * @returns {object} - See {@link https://tuckn.net/docs/WshChildProcess/global.html#typeRunSyncReturn|typeRunSyncReturn}.
    */
   zlib.unrarSync = function (archive, destDir, options) {
     var FN = 'zlib.unrarSync';

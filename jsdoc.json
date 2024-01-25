@@ -37,9 +37,9 @@
     "openGraph": {
       "title": "WshZLIB",
       "type": "website",
-      "image": "https://docs.tuckn.net/WshZLIB/img/openGraph-image.png",
+      "image": "https://tuckn.net/docs/WshZLIB/img/openGraph-image.png",
       "site_name": "@tuckn/WshZLIB",
-      "url": "https://docs.tuckn.net/WshZLIB"
+      "url": "https://tuckn.net/docs/WshZLIB/"
     },
     "meta": {
       "title": "WshZLIB",
